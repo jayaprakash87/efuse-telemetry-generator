@@ -17,14 +17,14 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 import pandas as pd
 
-from vip_datagen.config.models import DriveCycleConfig, SimulationConfig
-from vip_datagen.schemas.telemetry import (
+from efuse_datagen.config.models import DriveCycleConfig, SimulationConfig
+from efuse_datagen.schemas.telemetry import (
     ChannelMeta,
     FaultInjection,
     FaultType,
     PowerClass,
 )
-from vip_datagen.utils.logging import get_logger
+from efuse_datagen.utils.logging import get_logger
 
 log = get_logger(__name__)
 
@@ -195,7 +195,7 @@ class DriveCyclePlanner:
     @staticmethod
     def build_power_events(cycle: DriveCycleEvent) -> list:
         """Return power-state events for a single ignition cycle."""
-        from vip_datagen.config.models import PowerStateEvent
+        from efuse_datagen.config.models import PowerStateEvent
 
         return [
             PowerStateEvent(time_s=0.0, state="sleep"),
@@ -381,7 +381,7 @@ def generate_multi_cycle(
         ``(telemetry_df, labels_df)`` spanning all cycles.  Both contain a
         ``drive_cycle_id`` column.
     """
-    from vip_datagen.simulation.generator import TelemetryGenerator
+    from efuse_datagen.simulation.generator import TelemetryGenerator
 
     seed_seq = np.random.SeedSequence(sim_cfg.seed)
     child_seeds = seed_seq.spawn(len(cycles))

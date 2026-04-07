@@ -11,7 +11,7 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field
 
-from vip_datagen.schemas.telemetry import ChannelMeta, FaultInjection, PowerState, ZoneController
+from efuse_datagen.schemas.telemetry import ChannelMeta, FaultInjection, PowerState, ZoneController
 
 
 # ---------------------------------------------------------------------------
@@ -220,7 +220,7 @@ def default_config() -> PlatformConfig:
 
 def _resolve_topology(cfg: PlatformConfig) -> None:
     """Populate simulation channels from topology or channel_specs."""
-    from vip_datagen.config.catalog import build_channels, example_topology
+    from efuse_datagen.config.catalog import build_channels, example_topology
 
     sim = cfg.simulation
 

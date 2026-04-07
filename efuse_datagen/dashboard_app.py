@@ -1,7 +1,7 @@
-"""Streamlit dashboard for VIP Data Generator outputs.
+"""Streamlit dashboard for eFuse Telemetry Generator outputs.
 
 This module is packaged so the dashboard can be launched from an installed
-wheel via the ``vip-dashboard`` entry point or via the repo compatibility
+wheel via the ``efuse-dashboard`` entry point or via the repo compatibility
 wrapper at ``dashboard/app.py``.
 """
 
@@ -21,7 +21,7 @@ from plotly.subplots import make_subplots
 # ---------------------------------------------------------------------------
 
 st.set_page_config(
-    page_title="eFuse Telemetry — VIP",
+    page_title="eFuse Telemetry Generator",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -31,7 +31,12 @@ st.set_page_config(
 # Helpers
 # ---------------------------------------------------------------------------
 
-OUTPUT_ROOT = Path(os.environ.get("VIP_DATA_GENERATOR_OUTPUT_DIR", Path.cwd() / "output")).expanduser()
+OUTPUT_ROOT = Path(
+    os.environ.get(
+        "EFUSE_TELEMETRY_OUTPUT_DIR",
+        os.environ.get("VIP_DATA_GENERATOR_OUTPUT_DIR", Path.cwd() / "output"),
+    )
+).expanduser()
 
 FAULT_PALETTE: dict[str, str] = {
     "none": "rgba(0,0,0,0)",
@@ -98,14 +103,14 @@ def list_runs() -> list[str]:
 # Sidebar — run + channel selector
 # ---------------------------------------------------------------------------
 
-st.sidebar.title("⚡ eFuse VIP Dashboard")
+st.sidebar.title("⚡ eFuse Telemetry Dashboard")
 st.sidebar.markdown("---")
 
 runs = list_runs()
 if not runs:
     st.error(
-        "No output runs found. Run `vip-gen` first to generate data.\n\n"
-        "```\nvip-gen --duration 120\n```"
+        "No output runs found. Run `efuse-gen` first to generate data.\n\n"
+        "```\nefuse-gen --duration 120\n```"
     )
     st.stop()
 
@@ -782,4 +787,4 @@ with tab_config:
             _zone_bar.update_layout(showlegend=False, height=250, margin=dict(t=10, b=10))
             st.plotly_chart(_zone_bar, width="stretch")
         else:
-            st.info("No channel_manifest.parquet found for this run. Re-generate with the latest vip-gen.")
+            st.info("No channel_manifest.parquet found for this run. Re-generate with the latest efuse-gen.")

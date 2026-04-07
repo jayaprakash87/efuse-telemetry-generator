@@ -3,15 +3,15 @@ requires = ["setuptools>=77.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "vip-data-generator"
-version = "0.1.0"
+name = "efuse-telemetry-generator"
+version = "0.1.1"
 description = "Standalone synthetic eFuse telemetry generator — physics-based signal synthesis, feature extraction, and fault labelling for ZC architecture validation"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
-    {name = "VIP Data Generator Contributors"},
+    {name = "eFuse Telemetry Generator Contributors"},
 ]
 keywords = [
     "automotive",
@@ -47,10 +47,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/jayaprakash87/vip-data-generator"
-Documentation = "https://github.com/jayaprakash87/vip-data-generator/tree/main/docs"
-Repository = "https://github.com/jayaprakash87/vip-data-generator"
-Issues = "https://github.com/jayaprakash87/vip-data-generator/issues"
+Homepage = "https://github.com/jayaprakash87/efuse-telemetry-generator"
+Documentation = "https://github.com/jayaprakash87/efuse-telemetry-generator/tree/main/docs"
+Repository = "https://github.com/jayaprakash87/efuse-telemetry-generator"
+Issues = "https://github.com/jayaprakash87/efuse-telemetry-generator/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -64,15 +64,15 @@ dashboard = [
 ]
 
 [project.scripts]
-vip-gen = "vip_datagen.cli:app"
-vip-dashboard = "vip_datagen.dashboard_launcher:main"
+efuse-gen = "efuse_datagen.cli:app"
+efuse-dashboard = "efuse_datagen.dashboard_launcher:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["vip_datagen*"]
+include = ["efuse_datagen*"]
 
 [tool.setuptools.package-data]
-vip_datagen = ["config/templates/*.yaml"]
+efuse_datagen = ["config/templates/*.yaml"]
 
 [tool.ruff]
 line-length = 100

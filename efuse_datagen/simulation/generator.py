@@ -17,8 +17,8 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 import pandas as pd
 
-from vip_datagen.config.models import SimulationConfig
-from vip_datagen.schemas.telemetry import (
+from efuse_datagen.config.models import SimulationConfig
+from efuse_datagen.schemas.telemetry import (
     ChannelMeta,
     DeviceStatus,
     FaultInjection,
@@ -27,7 +27,7 @@ from vip_datagen.schemas.telemetry import (
     PowerState,
     ProtectionEvent,
 )
-from vip_datagen.utils.logging import get_logger
+from efuse_datagen.utils.logging import get_logger
 
 log = get_logger(__name__)
 

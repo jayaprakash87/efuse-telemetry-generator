@@ -1,4 +1,4 @@
-"""Core schemas for VIP Data Generator.
+"""Core schemas for eFuse Telemetry Generator.
 
 The repository generates synthetic eFuse telemetry for automotive Zone
 Controller architectures and emits three primary artefacts:

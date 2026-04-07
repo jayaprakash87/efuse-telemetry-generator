@@ -7,7 +7,7 @@ from pathlib import Path
 
 import yaml
 
-from vip_datagen.config.models import PlatformConfig, load_config_data
+from efuse_datagen.config.models import PlatformConfig, load_config_data
 
 BUILTIN_CONFIGS: dict[str, str] = {
     "default": "default.yaml",
@@ -29,6 +29,6 @@ def load_bundled_config(config_name: str) -> PlatformConfig:
         choices = ", ".join(BUILTIN_CONFIGS)
         raise KeyError(f"Unknown built-in config '{config_name}'. Choose one of: {choices}")
 
-    resource = files("vip_datagen").joinpath(f"config/templates/{BUILTIN_CONFIGS[key]}")
+    resource = files("efuse_datagen").joinpath(f"config/templates/{BUILTIN_CONFIGS[key]}")
     raw = yaml.safe_load(resource.read_text(encoding="utf-8"))
     return load_config_data(raw)

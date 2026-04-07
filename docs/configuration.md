@@ -1,6 +1,6 @@
 # Configuration Guide
 
-All VIP Data Generator behaviour is driven by YAML configuration files. This document is the complete field reference.
+All eFuse Telemetry Generator behaviour is driven by YAML configuration files. This document is the complete field reference.
 
 ---
 
@@ -8,10 +8,10 @@ All VIP Data Generator behaviour is driven by YAML configuration files. This doc
 
 ```bash
 # Use a built-in config
-vip-gen --config default
+efuse-gen --config default
 
 # Override specific fields via CLI
-vip-gen --config default --duration 120 --seed 99 --format csv
+efuse-gen --config default --duration 120 --seed 99 --format csv
 ```
 
 CLI flags override the corresponding YAML fields:
@@ -201,44 +201,44 @@ Output persistence settings.
 3-channel demo with 4 manual fault injections over 60 seconds. Good for quick smoke tests and learning the tool.
 
 ```bash
-vip-gen --config default
+efuse-gen --config default
 # → ~1,800 rows, 4 fault labels
 ```
 
-Source YAML: [`vip_datagen/config/templates/default.yaml`](../vip_datagen/config/templates/default.yaml)
+Source YAML: [`efuse_datagen/config/templates/default.yaml`](../efuse_datagen/config/templates/default.yaml)
 
 ### `zone_controller_full`
 
 Full 65-channel 4-zone topology with 21 manual faults over 300 seconds. Uses `use_example_topology: true` to load the built-in BEV topology from the eFuse catalog.
 
 ```bash
-vip-gen --config zone_controller_full
+efuse-gen --config zone_controller_full
 # → ~195,000 rows, ~9,000 labels, 31 feature columns
 ```
 
-Source YAML: [`vip_datagen/config/templates/zone_controller_full.yaml`](../vip_datagen/config/templates/zone_controller_full.yaml)
+Source YAML: [`efuse_datagen/config/templates/zone_controller_full.yaml`](../efuse_datagen/config/templates/zone_controller_full.yaml)
 
 ### `one_month`
 
 30-day multi-cycle simulation. Stochastic fault injection, progressive aging, mean-reverting ambient temperature. See [drive-cycles.md](drive-cycles.md) for details.
 
 ```bash
-vip-gen --config one_month
+efuse-gen --config one_month
 # → ~55 cycles, ~37 h driving, ~8.6 M rows
 ```
 
-Source YAML: [`vip_datagen/config/templates/one_month.yaml`](../vip_datagen/config/templates/one_month.yaml)
+Source YAML: [`efuse_datagen/config/templates/one_month.yaml`](../efuse_datagen/config/templates/one_month.yaml)
 
 ### `stress_test`
 
 Single channel with 7 fault types injected sequentially over 120 seconds. Useful for validating that all fault waveform generators produce correct output.
 
 ```bash
-vip-gen --config stress_test
+efuse-gen --config stress_test
 # → ~1,200 rows, 7 fault labels
 ```
 
-Source YAML: [`vip_datagen/config/templates/stress_test.yaml`](../vip_datagen/config/templates/stress_test.yaml)
+Source YAML: [`efuse_datagen/config/templates/stress_test.yaml`](../efuse_datagen/config/templates/stress_test.yaml)
 
 ---
 

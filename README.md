@@ -1,4 +1,4 @@
-# VIP Data Generator
+# eFuse Telemetry Generator
 
 Synthetic eFuse telemetry generator for Battery Electric Vehicle (BEV) Zone Controller architectures. Produces physics-grounded, labelled datasets for eFuse protection algorithm development, ML training, and validation — without lab hardware or OEM data.
 
@@ -84,29 +84,29 @@ Requires Python ≥ 3.10.
 
 ```bash
 # Default 3-channel mixed-fault demo (60 s)
-vip-gen
+efuse-gen
 
 # List packaged configs
-vip-gen --list-configs
+efuse-gen --list-configs
 
 # 65-channel full ZC topology (300 s, 21 fault injections)
-vip-gen --config zone_controller_full
+efuse-gen --config zone_controller_full
 
 # Override duration and seed
-vip-gen --config default --duration 120 --seed 99
+efuse-gen --config default --duration 120 --seed 99
 
 # CSV output
-vip-gen --config default --format csv
+efuse-gen --config default --format csv
 
 # Filesystem paths still work too
-vip-gen --config ./my-custom-scenario.yaml
+efuse-gen --config ./my-custom-scenario.yaml
 ```
 
 ### Multi-Cycle Mode
 
 ```bash
 # 30-day mixed driving profile (~55 cycles, ~37 h driving, ~8.6 M rows)
-vip-gen --config one_month
+efuse-gen --config one_month
 ```
 
 Multi-cycle mode is auto-detected when the config has `drive_cycle.enabled: true`. The CLI accepts either a filesystem path or a packaged config name (`default`, `zone_controller_full`, `one_month`, `stress_test`).
@@ -136,7 +136,7 @@ Interactive Streamlit dashboard for exploring generated data.
 
 ```bash
 pip install -e ".[dashboard]"
-vip-dashboard
+efuse-dashboard
 # Opens at http://localhost:8501 and reads ./output by default
 ```
 
@@ -146,7 +146,7 @@ Alternative repo-local launch:
 streamlit run dashboard/app.py
 ```
 
-The dashboard reads `output/` from the current working directory by default. Set `VIP_DATA_GENERATOR_OUTPUT_DIR=/path/to/output` to point it elsewhere.
+The dashboard reads `output/` from the current working directory by default. Set `EFUSE_TELEMETRY_OUTPUT_DIR=/path/to/output` to point it elsewhere. The older `VIP_DATA_GENERATOR_OUTPUT_DIR` variable is still accepted for compatibility.
 
 | Tab | Contents |
 |-----|----------|
@@ -163,15 +163,15 @@ The dashboard reads `output/` from the current working directory by default. Set
 
 | Config | Description |
 |--------|-------------|
-| [`default`](vip_datagen/config/templates/default.yaml) | 3-channel mixed-fault demo (60 s) |
-| [`zone_controller_full`](vip_datagen/config/templates/zone_controller_full.yaml) | 65-channel 4-zone topology, 300 s, 21 fault injections |
-| [`one_month`](vip_datagen/config/templates/one_month.yaml) | 30-day multi-cycle simulation (~8.6 M rows) |
-| [`stress_test`](vip_datagen/config/templates/stress_test.yaml) | All fault types on a single channel (120 s) |
+| [`default`](efuse_datagen/config/templates/default.yaml) | 3-channel mixed-fault demo (60 s) |
+| [`zone_controller_full`](efuse_datagen/config/templates/zone_controller_full.yaml) | 65-channel 4-zone topology, 300 s, 21 fault injections |
+| [`one_month`](efuse_datagen/config/templates/one_month.yaml) | 30-day multi-cycle simulation (~8.6 M rows) |
+| [`stress_test`](efuse_datagen/config/templates/stress_test.yaml) | All fault types on a single channel (120 s) |
 
 ## Project Structure
 
 ```
-vip_datagen/
+efuse_datagen/
 ├── schemas/telemetry.py      # Pydantic data models (ChannelMeta, EFuseProfile, FaultInjection, …)
 ├── config/
 │   ├── models.py             # SimulationConfig, DriveCycleConfig, FaultRateConfig, FeatureConfig
@@ -179,7 +179,7 @@ vip_datagen/
 │   ├── builtin.py            # Built-in config loader and registry
 │   └── templates/*.yaml      # Canonical packaged scenario configs
 ├── dashboard_app.py          # Packaged Streamlit dashboard app
-├── dashboard_launcher.py     # vip-dashboard entry point
+├── dashboard_launcher.py     # efuse-dashboard entry point
 ├── simulation/
 │   ├── generator.py          # TelemetryGenerator — signal synthesis, fault waveforms, protection
 │   └── drive_cycles.py       # DriveCyclePlanner — schedule, fault distribution, multi-cycle orchestration
@@ -200,7 +200,7 @@ examples/
 ```bash
 pytest                  # Run all 31 tests
 pytest -v               # Verbose
-pytest --cov=vip_datagen  # With coverage
+pytest --cov=efuse_datagen  # With coverage
 ```
 
 ## License

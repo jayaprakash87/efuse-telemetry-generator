@@ -16,11 +16,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from vip_datagen.config.builtin import load_bundled_config
-from vip_datagen.config.models import StorageConfig
-from vip_datagen.features.engine import FeatureEngine
-from vip_datagen.simulation.generator import TelemetryGenerator
-from vip_datagen.storage.writer import StorageWriter
+from efuse_datagen.config.builtin import load_bundled_config
+from efuse_datagen.config.models import StorageConfig
+from efuse_datagen.features.engine import FeatureEngine
+from efuse_datagen.simulation.generator import TelemetryGenerator
+from efuse_datagen.storage.writer import StorageWriter
 
 # --------------------------------------------------------------------------
 # 1. Load a scenario (or use the programmatic API)

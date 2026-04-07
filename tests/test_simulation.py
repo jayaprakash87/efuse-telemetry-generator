@@ -2,8 +2,8 @@
 
 import pandas as pd
 
-from vip_datagen.config.models import SimulationConfig
-from vip_datagen.schemas.telemetry import (
+from efuse_datagen.config.models import SimulationConfig
+from efuse_datagen.schemas.telemetry import (
     ChannelMeta,
     FaultInjection,
     FaultType,
@@ -11,8 +11,8 @@ from vip_datagen.schemas.telemetry import (
     PowerClass,
     PowerState,
 )
-from vip_datagen.config.models import PowerStateEvent
-from vip_datagen.simulation.generator import TelemetryGenerator
+from efuse_datagen.config.models import PowerStateEvent
+from efuse_datagen.simulation.generator import TelemetryGenerator
 
 
 def _make_config(**overrides) -> SimulationConfig:
@@ -211,7 +211,7 @@ def test_nominal_has_no_protection_events():
 
 def test_catalog_propagates_dual_adc():
     """build_channels should propagate current/voltage ADC bits from catalog."""
-    from vip_datagen.config.catalog import build_channels, example_topology, EFUSE_CATALOG
+    from efuse_datagen.config.catalog import build_channels, example_topology, EFUSE_CATALOG
 
     zones, specs = example_topology()
     channels = build_channels(zones, specs)
@@ -516,7 +516,7 @@ def _make_ch_harness(
 
 def test_harness_r_raises_voltage_drop():
     """Higher harness resistance should produce a lower measured voltage."""
-    from vip_datagen.config.models import SimulationConfig
+    from efuse_datagen.config.models import SimulationConfig
 
     ch_low = _make_ch_harness(harness_r_ohm=0.010, connector_r_ohm=0.005)
     ch_high = _make_ch_harness(harness_r_ohm=0.100, connector_r_ohm=0.050)
@@ -1010,7 +1010,7 @@ def test_start_channel_only_active_during_crank():
 
 def test_power_state_events_in_config():
     """SimulationConfig should accept power_state_events and they should be accessible."""
-    from vip_datagen.config.models import SimulationConfig
+    from efuse_datagen.config.models import SimulationConfig
 
     cfg = SimulationConfig(
         scenario_id="ps_test",

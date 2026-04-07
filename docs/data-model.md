@@ -1,6 +1,6 @@
 # Data Model Reference
 
-This document defines every output file, column, enum, and data type produced by VIP Data Generator. Use it as the contract between the generator and any downstream consumer (ML pipeline, dashboard, analytics notebook, HIL test bench).
+This document defines every output file, column, enum, and data type produced by eFuse Telemetry Generator. Use it as the contract between the generator and any downstream consumer (ML pipeline, dashboard, analytics notebook, HIL test bench).
 
 ---
 
@@ -185,7 +185,7 @@ One row per drive cycle. Only written in multi-cycle mode.
 Exact copy of the resolved `SimulationConfig` used for the run, including any CLI overrides. Enables exact reproduction:
 
 ```bash
-vip-gen --config output/20260407-114810-dgldik/config.yaml
+efuse-gen --config output/20260407-114810-dgldik/config.yaml
 ```
 
 ---

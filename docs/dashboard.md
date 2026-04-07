@@ -11,7 +11,7 @@ The Streamlit dashboard provides interactive visualisation of generated eFuse te
 pip install -e ".[dashboard]"
 
 # Generate data first
-vip-gen --config zone_controller_full
+efuse-gen --config zone_controller_full
 
 # Launch
 streamlit run dashboard/app.py

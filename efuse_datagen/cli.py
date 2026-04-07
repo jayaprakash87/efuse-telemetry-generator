@@ -1,11 +1,11 @@
-"""CLI for VIP Data Generator.
+"""CLI for eFuse Telemetry Generator.
 
 Example usage:
-    vip-gen
-    vip-gen --config zone_controller_full
-    vip-gen --config one_month
-    vip-gen --config default --output my_run/ --format csv
-    vip-gen --config default --duration 120 --seed 99
+    efuse-gen
+    efuse-gen --config zone_controller_full
+    efuse-gen --config one_month
+    efuse-gen --config default --output my_run/ --format csv
+    efuse-gen --config default --duration 120 --seed 99
 
 The generator produces:
     <output>/<run_id>/telemetry.parquet         raw per-sample eFuse signals
@@ -27,21 +27,21 @@ import typer
 import yaml
 from rich.console import Console
 
-from vip_datagen.config.builtin import list_bundled_configs, load_bundled_config
-from vip_datagen.config.models import (
+from efuse_datagen.config.builtin import list_bundled_configs, load_bundled_config
+from efuse_datagen.config.models import (
     FeatureConfig,
     SimulationConfig,
     StorageConfig,
     load_config,
 )
-from vip_datagen.features.engine import FeatureEngine
-from vip_datagen.simulation.generator import TelemetryGenerator
-from vip_datagen.storage.writer import StorageWriter
-from vip_datagen.utils.logging import configure_logging, get_logger
+from efuse_datagen.features.engine import FeatureEngine
+from efuse_datagen.simulation.generator import TelemetryGenerator
+from efuse_datagen.storage.writer import StorageWriter
+from efuse_datagen.utils.logging import configure_logging, get_logger
 
 app = typer.Typer(
-    name="vip-gen",
-    help="VIP synthetic eFuse telemetry generator for ZC architecture validation.",
+    name="efuse-gen",
+    help="Synthetic eFuse telemetry generator for ZC architecture validation.",
     add_completion=False,
     invoke_without_command=True,
 )
@@ -123,7 +123,7 @@ def generate(
 
     store_cfg = store_cfg.model_copy(update={"output_dir": str(out_dir), "format": fmt})
 
-    console.rule("[bold cyan]VIP Data Generator")
+    console.rule("[bold cyan]eFuse Telemetry Generator")
     console.print(f"  Scenario  : [bold]{sim_cfg.name}[/bold]")
     console.print(f"  Channels  : {len(sim_cfg.channels)}")
     console.print(f"  Seed      : {sim_cfg.seed}")
@@ -137,7 +137,7 @@ def generate(
 
         from rich.progress import BarColumn, Progress, TextColumn, TimeRemainingColumn
 
-        from vip_datagen.simulation.drive_cycles import (
+        from efuse_datagen.simulation.drive_cycles import (
             DriveCyclePlanner,
             generate_multi_cycle,
         )

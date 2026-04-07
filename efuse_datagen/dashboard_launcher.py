@@ -9,7 +9,7 @@ from pathlib import Path
 
 def main() -> None:
     """Launch the packaged dashboard via Streamlit."""
-    parser = argparse.ArgumentParser(description="Launch the VIP Data Generator dashboard.")
+    parser = argparse.ArgumentParser(description="Launch the eFuse Telemetry Generator dashboard.")
     parser.add_argument(
         "--output-root",
         default=None,
@@ -18,13 +18,15 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.output_root:
-        os.environ["VIP_DATA_GENERATOR_OUTPUT_DIR"] = str(Path(args.output_root).expanduser())
+        output_root = str(Path(args.output_root).expanduser())
+        os.environ["EFUSE_TELEMETRY_OUTPUT_DIR"] = output_root
+        os.environ["VIP_DATA_GENERATOR_OUTPUT_DIR"] = output_root
 
     try:
         from streamlit.web import bootstrap
     except ImportError as exc:
         raise SystemExit(
-            "The dashboard dependencies are not installed. Run: pip install 'vip-data-generator[dashboard]'"
+            "The dashboard dependencies are not installed. Run: pip install 'efuse-telemetry-generator[dashboard]'"
         ) from exc
 
     app_path = Path(__file__).with_name("dashboard_app.py")

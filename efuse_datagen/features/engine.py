@@ -10,9 +10,9 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from vip_datagen.config.models import FeatureConfig
-from vip_datagen.schemas.telemetry import ProtectionEvent
-from vip_datagen.utils.logging import get_logger
+from efuse_datagen.config.models import FeatureConfig
+from efuse_datagen.schemas.telemetry import ProtectionEvent
+from efuse_datagen.utils.logging import get_logger
 
 log = get_logger(__name__)
 

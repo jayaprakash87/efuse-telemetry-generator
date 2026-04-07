@@ -20,7 +20,7 @@ Supported IC families:
 
 from __future__ import annotations
 
-from vip_datagen.schemas.telemetry import (
+from efuse_datagen.schemas.telemetry import (
     ChannelMeta,
     EFuseFamily,
     EFuseProfile,

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-VIP Data Generator synthesises physically realistic eFuse telemetry for Battery Electric Vehicle (BEV) Zone Controller architectures. It exists because:
+eFuse Telemetry Generator synthesises physically realistic eFuse telemetry for Battery Electric Vehicle (BEV) Zone Controller architectures. It exists because:
 
 1. **Lab hardware is expensive and slow** — a single Zone Controller test bench costs €200k+ and produces data at real-time speed. This tool generates months of data in minutes.
 2. **OEM data is access-restricted** — production field data requires NDA chains and anonymisation. Synthetic data has no legal constraints.
@@ -109,7 +109,7 @@ The generator creates these scenarios on demand with precise ground-truth labels
 
 ## Module Responsibilities
 
-### `vip_datagen/schemas/telemetry.py` — Data Contracts
+### `efuse_datagen/schemas/telemetry.py` — Data Contracts
 
 All Pydantic models and enums that define the vocabulary of the system. Nothing in the codebase creates a DataFrame column or injects a fault without referencing a type defined here.
 
@@ -122,11 +122,11 @@ Key types:
 - **`ProtectionEvent`** — SCP, I2T, LATCH_OFF, THERMAL_SHUTDOWN, OPEN_LOAD_DIAG, OVER_VOLTAGE
 - **`TelemetryRecord`** — one sample: timestamp, channel_id, current_a, voltage_v, temperature_c, state_on_off, protection_event, …
 
-### `vip_datagen/config/catalog.py` — eFuse IC Library
+### `efuse_datagen/config/catalog.py` — eFuse IC Library
 
 `EFUSE_CATALOG` is a dict of 19 `EFuseProfile` instances — the parametric database of real eFuse ICs. `example_topology()` returns the 65-channel 4-zone BEV specification. `build_channels()` expands compact topology specs into full `ChannelMeta` objects with catalog lookup and per-channel randomisation.
 
-### `vip_datagen/config/models.py` — Configuration Hierarchy
+### `efuse_datagen/config/models.py` — Configuration Hierarchy
 
 Pydantic models for YAML config parsing:
 - `SimulationConfig` — top-level: scenario_id, duration, sample interval, channels, faults, power states, seed
@@ -135,7 +135,7 @@ Pydantic models for YAML config parsing:
 - `FeatureConfig` — rolling window tuning
 - `StorageConfig` — output format and directory
 
-### `vip_datagen/simulation/generator.py` — Signal Synthesis Engine
+### `efuse_datagen/simulation/generator.py` — Signal Synthesis Engine
 
 The core of the system. `TelemetryGenerator.generate()` loops over channels and time steps, applying an 8-stage pipeline:
 
@@ -148,7 +148,7 @@ The core of the system. `TelemetryGenerator.generate()` loops over channels and 
 7. **Fault waveform injection** — 14 fault-type-specific waveform generators (detailed below)
 8. **Protection response** — SCP comparator → immediate trip; F(i,t) accumulator → trip after energy threshold; retry N times; then latch-off
 
-### `vip_datagen/simulation/drive_cycles.py` — Multi-Cycle Orchestrator
+### `efuse_datagen/simulation/drive_cycles.py` — Multi-Cycle Orchestrator
 
 `DriveCyclePlanner` creates a realistic month-long driving calendar:
 - Poisson process for daily trip count
@@ -160,7 +160,7 @@ The core of the system. `TelemetryGenerator.generate()` loops over channels and 
 
 `generate_multi_cycle()` orchestrates per-cycle `TelemetryGenerator` calls with `SeedSequence`-derived child seeds for reproducibility, then shifts timestamps and concatenates into a single DataFrame.
 
-### `vip_datagen/features/engine.py` — Feature Extraction
+### `efuse_datagen/features/engine.py` — Feature Extraction
 
 Rolling-window statistics grouped by `(channel_id, drive_cycle_id)`:
 - Current: RMS, mean, max, min
@@ -172,7 +172,7 @@ Rolling-window statistics grouped by `(channel_id, drive_cycle_id)`:
 
 Grouping by drive_cycle_id prevents rolling windows from spanning across ignition boundaries.
 
-### `vip_datagen/storage/writer.py` — Output Persistence
+### `efuse_datagen/storage/writer.py` — Output Persistence
 
 Writes Parquet (default), CSV, or JSON. Handles:
 - List column serialisation (→ JSON strings) for Parquet round-trip fidelity
@@ -180,7 +180,7 @@ Writes Parquet (default), CSV, or JSON. Handles:
 - `drive_cycles.parquet` — cycle-level metadata
 - Disk space check before writes
 
-### `vip_datagen/cli.py` — CLI Entry Point
+### `efuse_datagen/cli.py` — CLI Entry Point
 
 Typer-based. Auto-detects single vs multi-cycle from config. Multi-cycle mode uses Rich progress bar. Always writes channel manifest; writes drive_cycles only when multi-cycle.
 

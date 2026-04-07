@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for contributing to VIP Data Generator.
+Thanks for contributing to eFuse Telemetry Generator.
 
 ## Scope
 
@@ -26,14 +26,14 @@ Useful commands:
 ```bash
 pytest -q
 python -m build --sdist --wheel
-vip-gen --list-configs
-vip-gen --config default
-vip-dashboard --help
+efuse-gen --list-configs
+efuse-gen --config default
+efuse-dashboard --help
 ```
 
 ## Coding Guidelines
 
-- Preserve the current package model: packaged runtime code and packaged built-in config templates under `vip_datagen/config/templates/`.
+- Preserve the current package model: packaged runtime code and packaged built-in config templates under `efuse_datagen/config/templates/`.
 - Do not duplicate built-in configs in multiple locations.
 - Keep documentation, comments, and docstrings aligned with the current runtime behaviour.
 - Prefer small, reviewable changes over broad rewrites.
@@ -46,9 +46,9 @@ Before opening a pull request:
 1. Run `pytest -q`.
 2. Run `python -m build --sdist --wheel`.
 3. If you changed packaged runtime flows, smoke test at least one of:
-   - `vip-gen --config default`
-   - `vip-gen --list-configs`
-   - `vip-dashboard --help`
+   - `efuse-gen --config default`
+   - `efuse-gen --list-configs`
+   - `efuse-dashboard --help`
 4. Update docs if user-facing behaviour changed.
 
 PR descriptions should explain:

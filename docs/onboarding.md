@@ -6,7 +6,7 @@ This document is for engineers joining the project or receiving a handover. It c
 
 ## What This Project Is
 
-**VIP Data Generator** creates synthetic telemetry for automotive eFuse protection systems — the solid-state switches replacing traditional blade fuses in modern Battery Electric Vehicles (BEVs).
+**eFuse Telemetry Generator** creates synthetic telemetry for automotive eFuse protection systems — the solid-state switches replacing traditional blade fuses in modern Battery Electric Vehicles (BEVs).
 
 It generates realistic current, voltage, and temperature signals for up to 65 eFuse channels across 4 vehicle zones, with:
 - Physically modelled noise, thermal dynamics, and sensing chain errors
@@ -27,8 +27,8 @@ It generates realistic current, voltage, and temperature signals for up to 65 eF
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/jayaprakash87/vip-data-generator.git
-cd vip-data-generator
+git clone https://github.com/jayaprakash87/efuse-telemetry-generator.git
+cd efuse-telemetry-generator
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev,dashboard]"
@@ -37,7 +37,7 @@ pip install -e ".[dev,dashboard]"
 ### 2. Run the Demo
 
 ```bash
-vip-gen --config default
+efuse-gen --config default
 ```
 
 This generates a 3-channel, 60-second dataset in `output/<run_id>/`. Takes under 2 seconds.
@@ -53,7 +53,7 @@ Select the run from the sidebar. Walk through each tab: Overview → Telemetry �
 ### 4. Run the Full Topology
 
 ```bash
-vip-gen --config zone_controller_full
+efuse-gen --config zone_controller_full
 ```
 
 65 channels, 4 zones, 300 seconds, 21 fault injections. ~195K rows, takes ~10 seconds.
@@ -61,7 +61,7 @@ vip-gen --config zone_controller_full
 ### 5. Generate a Month of Data
 
 ```bash
-vip-gen --config one_month
+efuse-gen --config one_month
 ```
 
 30-day multi-cycle simulation. ~55 drive cycles, ~37 hours of driving, ~8.6M rows. Takes ~2 minutes.
@@ -128,16 +128,16 @@ See [drive-cycles.md](drive-cycles.md) for the full deep-dive.
 
 | File | What to Look At |
 |------|-----------------|
-| [`vip_datagen/schemas/telemetry.py`](../vip_datagen/schemas/telemetry.py) | All data types. Start here to understand the vocabulary. |
-| [`vip_datagen/config/catalog.py`](../vip_datagen/config/catalog.py) | eFuse IC parameters + vehicle topology. Read `EFUSE_CATALOG` and `example_topology()`. |
-| [`vip_datagen/config/models.py`](../vip_datagen/config/models.py) | Config hierarchy. Read `SimulationConfig` to see what the YAML maps to. |
-| [`vip_datagen/simulation/generator.py`](../vip_datagen/simulation/generator.py) | Core engine. Read `_generate_channel()` — it's the 8-stage pipeline. |
-| [`vip_datagen/simulation/drive_cycles.py`](../vip_datagen/simulation/drive_cycles.py) | Multi-cycle planner. Read `generate_schedule()` and `distribute_faults()`. |
-| [`vip_datagen/features/engine.py`](../vip_datagen/features/engine.py) | Feature computation. Read `compute()` — one method, 20+ features. |
-| [`vip_datagen/storage/writer.py`](../vip_datagen/storage/writer.py) | Output layer. Straightforward Parquet/CSV writes. |
-| [`vip_datagen/cli.py`](../vip_datagen/cli.py) | CLI orchestration. Single-cycle vs multi-cycle branching logic. |
-| [`vip_datagen/dashboard_app.py`](../vip_datagen/dashboard_app.py) | Packaged Streamlit UI. [`dashboard/app.py`](../dashboard/app.py) is only a compatibility wrapper. |
-| [`vip_datagen/config/templates/one_month.yaml`](../vip_datagen/config/templates/one_month.yaml) | Best example of full multi-cycle config. Read the comments. |
+| [`efuse_datagen/schemas/telemetry.py`](../efuse_datagen/schemas/telemetry.py) | All data types. Start here to understand the vocabulary. |
+| [`efuse_datagen/config/catalog.py`](../efuse_datagen/config/catalog.py) | eFuse IC parameters + vehicle topology. Read `EFUSE_CATALOG` and `example_topology()`. |
+| [`efuse_datagen/config/models.py`](../efuse_datagen/config/models.py) | Config hierarchy. Read `SimulationConfig` to see what the YAML maps to. |
+| [`efuse_datagen/simulation/generator.py`](../efuse_datagen/simulation/generator.py) | Core engine. Read `_generate_channel()` — it's the 8-stage pipeline. |
+| [`efuse_datagen/simulation/drive_cycles.py`](../efuse_datagen/simulation/drive_cycles.py) | Multi-cycle planner. Read `generate_schedule()` and `distribute_faults()`. |
+| [`efuse_datagen/features/engine.py`](../efuse_datagen/features/engine.py) | Feature computation. Read `compute()` — one method, 20+ features. |
+| [`efuse_datagen/storage/writer.py`](../efuse_datagen/storage/writer.py) | Output layer. Straightforward Parquet/CSV writes. |
+| [`efuse_datagen/cli.py`](../efuse_datagen/cli.py) | CLI orchestration. Single-cycle vs multi-cycle branching logic. |
+| [`efuse_datagen/dashboard_app.py`](../efuse_datagen/dashboard_app.py) | Packaged Streamlit UI. [`dashboard/app.py`](../dashboard/app.py) is only a compatibility wrapper. |
+| [`efuse_datagen/config/templates/one_month.yaml`](../efuse_datagen/config/templates/one_month.yaml) | Best example of full multi-cycle config. Read the comments. |
 | [`tests/test_simulation.py`](../tests/test_simulation.py) | Test patterns — good examples of how to call the generator programmatically. |
 
 **Suggested reading order:** `telemetry.py` → `catalog.py` → `models.py` → `generator.py` → `cli.py` → run the demo → read the dashboard code.
@@ -176,8 +176,8 @@ See [drive-cycles.md](drive-cycles.md) for the full deep-dive.
 ### Debug a Specific Channel's Output
 
 ```python
-from vip_datagen.config.models import SimulationConfig
-from vip_datagen.simulation.generator import TelemetryGenerator
+from efuse_datagen.config.models import SimulationConfig
+from efuse_datagen.simulation.generator import TelemetryGenerator
 
 config = SimulationConfig(
     channels=[ChannelMeta(channel_id="ch_01", nominal_current_a=6.0)],
@@ -195,9 +195,9 @@ print(tel_df[tel_df["channel_id"] == "ch_01"][["timestamp", "current_a", "protec
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `vip-gen: command not found` | Not installed in editable mode | `pip install -e ".[dev]"` |
-| `ModuleNotFoundError: vip_datagen` | Wrong venv or not installed | Activate `.venv`, reinstall |
-| Dashboard shows empty run list | No data in `output/` | Run `vip-gen` first |
+| `efuse-gen: command not found` | Not installed in editable mode | `pip install -e ".[dev]"` |
+| `ModuleNotFoundError: efuse_datagen` | Wrong venv or not installed | Activate `.venv`, reinstall |
+| Dashboard shows empty run list | No data in `output/` | Run `efuse-gen` first |
 | Dashboard missing zone filter | No `channel_manifest.parquet` | Re-generate with current code |
 | Multi-cycle takes very long | Too many days or fine sample interval | Use `sample_interval_ms: 1000` for long runs |
 | `SeedSequence` error | NumPy < 1.24 | `pip install "numpy>=1.24"` |
