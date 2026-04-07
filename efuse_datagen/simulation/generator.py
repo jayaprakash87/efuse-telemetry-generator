@@ -919,6 +919,73 @@ class TelemetryGenerator:
                         uv_mask, DeviceStatus.FAULT.value, DeviceStatus.WARNING.value
                     )
 
+                case FaultType.GROUND_OFFSET:
+                    # Corroded / high-resistance GND bond on the ECU node.
+                    # Root cause: connector corrosion, damaged GND strap, or
+                    # insufficient GND stitch points.  The GND node rises above
+                    # chassis earth by V_gnd = I_load × R_gnd (Ohm's law).
+                    #
+                    # Observable effects from the application layer:
+                    #   • All voltage readings biased high (V_meas = V_load + V_gnd)
+                    #   • Current reading biased high (ISENSE common-mode shift)
+                    #   • Offset grows slowly as contact degrades — ramp model
+                    #   • Distinctive: offset uniform across ALL channels on same node
+                    #
+                    # Model: linear ramp from 0 to ground_offset_max_v × intensity
+                    # over fault window; both current and voltage shift together.
+                    t_norm = np.linspace(0, 1, n_fault)
+                    v_offset = ch.ground_offset_max_v * fi.intensity * t_norm
+                    voltage[sl] = voltage[sl] + v_offset + self.rng.normal(0, 0.005, n_fault)
+                    # ISENSE sees V_gnd as a common-mode shift; it appears as extra
+                    # current: ΔI = V_gnd / (R_ds,on + harness_r) — typically small but
+                    # measurable.  Cap at 10 % of nominal to stay physical.
+                    r_sense_path = max(ch.r_ds_on_ohm + ch.harness_r_ohm, 0.001)
+                    i_offset = np.clip(v_offset / r_sense_path, 0, ch.nominal_current_a * 0.10)
+                    current[sl] = current[sl] + i_offset + self.rng.normal(0, 0.002, n_fault)
+                    status[sl] = DeviceStatus.WARNING.value
+
+                case FaultType.SHORT_TO_GROUND:
+                    # Load output wire contacts chassis GND through a low-resistance
+                    # path R_stg (wire chafing through insulation, connector pin contact).
+                    # Current path: V_bus → eFuse → R_stg → chassis GND.
+                    #
+                    # Observable effects:
+                    #   • Instantaneous current spike to V_bus / (R_ds,on + R_stg)
+                    #   • Load voltage collapses to near 0 V (shorted to GND)
+                    #   • eFuse SCP or I2t trips within microseconds to milliseconds
+                    #   • After trip: current ≈ 0, voltage stays near 0 (wire still shorted)
+                    #   • Retry cycle: each retry sees same STG pattern → eventual latch-off
+                    #
+                    # Distinctive from OVERLOAD_SPIKE: voltage ≈ 0 simultaneously with
+                    # current spike.  Key diagnostic cross-check for a classifier.
+                    r_stg = ch.stg_resistance_ohm * (1.0 + (1.0 - fi.intensity) * 9.0)
+                    # Fault current limited by total series resistance
+                    i_stg = bus_voltage[start_idx] / max(ch.r_ds_on_ohm + r_stg, 0.001)
+                    i_stg = min(i_stg, ch.max_current_a * 3.0)  # physical ceiling
+                    # Sharp rise envelope (5 % rise, then held until protection trips)
+                    envelope = self._fault_envelope_rise_fall(n_fault, rise_frac=0.05, fall_frac=0.0)
+                    current[sl] = i_stg * envelope + self.rng.normal(0, i_stg * 0.02, n_fault)
+                    # Load voltage collapses proportionally to the STG path (V_load ≈ 0)
+                    voltage[sl] = (
+                        r_stg / max(ch.r_ds_on_ohm + r_stg, 0.001) * bus_voltage[sl]
+                        + self.rng.normal(0, 0.01, n_fault)
+                    )
+                    # STG always triggers protection (SCP or I2t) — delegate to protection model
+                    trip[sl] = True
+                    overload[sl] = True
+                    status[sl] = DeviceStatus.FAULT.value
+                    self._apply_protection(
+                        current,
+                        state,
+                        trip,
+                        protection_event,
+                        reset_counter,
+                        ch,
+                        start_idx,
+                        end_idx,
+                        interval_s,
+                    )
+
             fault_active[sl] = fi.fault_type.value
             severity[sl] = fi.intensity
 

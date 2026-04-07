@@ -71,6 +71,8 @@ class FaultType(str, Enum):
     CONNECTOR_AGING = "connector_aging"  # Fretting/oxidation raises harness contact resistance
     THERMAL_COUPLING = "thermal_coupling"  # Elevated temp from co-die neighbour channel(s)
     WAKE_TRANSIENT = "wake_transient"  # Abnormal current surge on KL15/KLR wake-up
+    GROUND_OFFSET = "ground_offset"  # Corroded GND path raises node ground potential (V-offset on all signals)
+    SHORT_TO_GROUND = "short_to_ground"  # Output wire shorts to chassis GND through low-R path
 
 
 class SourceProtocol(str, Enum):
@@ -581,6 +583,24 @@ class ChannelMeta(BaseModel):
     connector_r_ohm: float = Field(
         default=0.010,
         description="Sum of pin/terminal contact resistance Ω on this harness leg (typ. 10–20 mΩ fresh)",
+    )
+
+    # --- Ground fault parameters ---
+    # Ground-offset fault: corroded or high-resistance GND bond shifts the node's
+    # reference potential by V_gnd = I_total × R_gnd.  All voltage/current
+    # measurements from that node appear offset by this amount.
+    # Short-to-ground fault: load output wire contacts chassis GND through a
+    # low-resistance path R_stg — current rockets to V_bus / (Rds,on + R_stg)
+    # and load voltage collapses to ~0 V before eFuse SCP/I2t trips.
+    ground_offset_max_v: float = Field(
+        default=2.0,
+        ge=0.0,
+        description="Maximum ground-node potential shift in V during a GROUND_OFFSET fault (typ. 0.1–2 V)",
+    )
+    stg_resistance_ohm: float = Field(
+        default=0.05,
+        ge=0.001,
+        description="Short-to-GND fault path resistance Ω (typ. 10–100 mΩ for wire-to-wire contact)",
     )
 
     # --- Multi-channel die thermal coupling ---
