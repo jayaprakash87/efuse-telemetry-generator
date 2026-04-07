@@ -242,7 +242,8 @@ class TelemetryGenerator:
         # White ADC / harness noise
         noise = self.rng.normal(0, 0.02, n)
 
-        bus = 13.5 + soc_drift + load_ripple + noise
+        v_nom = self.cfg.bus_voltage_nominal
+        bus = v_nom + soc_drift + load_ripple + noise
         return bus
 
     # ------------------------------------------------------------------
@@ -855,15 +856,16 @@ class TelemetryGenerator:
                     # resistive loads.  Some ICs set an over-voltage status bit.
                     # Model: linear ramp up within first 5 % of window, hold at elevated
                     # level, then ramp back over last 10 % (charger disconnected).
-                    v_jump = 13.5 + fi.intensity * 10.5  # 16–24 V depending on intensity
+                    v_nom = self.cfg.bus_voltage_nominal
+                    v_jump = v_nom + fi.intensity * 10.5  # 16–24 V depending on intensity
                     envelope = self._fault_envelope_rise_fall(
                         n_fault, rise_frac=0.05, fall_frac=0.10
                     )
-                    bus_voltage[sl] = 13.5 + (v_jump - 13.5) * envelope
+                    bus_voltage[sl] = v_nom + (v_jump - v_nom) * envelope
                     # Voltage at load follows bus (negligible harness drop at low current)
                     voltage[sl] = bus_voltage[sl] + self.rng.normal(0, 0.05, n_fault)
                     # Resistive load current scales with voltage ratio
-                    v_ratio = bus_voltage[sl] / 13.5
+                    v_ratio = bus_voltage[sl] / v_nom
                     current[sl] = ch.nominal_current_a * v_ratio + self._composite_noise(
                         n_fault, ch
                     )
@@ -885,7 +887,8 @@ class TelemetryGenerator:
                     # Fast spike then exponential decay
                     tau_norm = 0.15  # decay time constant as fraction of window
                     spike = v_peak * np.exp(-t_norm / tau_norm)
-                    bus_voltage[sl] = 13.5 + spike + self.rng.normal(0, 0.2, n_fault)
+                    v_nom = self.cfg.bus_voltage_nominal
+                    bus_voltage[sl] = v_nom + spike + self.rng.normal(0, 0.2, n_fault)
                     voltage[sl] = bus_voltage[sl] + self.rng.normal(0, 0.1, n_fault)
                     # IC over-voltage clamp fires — current briefly spikes then IC shuts off
                     peak_samples = max(int(n_fault * 0.05), 1)
@@ -903,20 +906,21 @@ class TelemetryGenerator:
                     # to 7–9 V for 3–5 s then recovers as engine fires.
                     # ISO 16750-2 profile: 30 ms pre-crank at nominal, drop to 6 V, recover
                     # linearly over crank window.  Model uses a U-shape.
-                    v_sag = 13.5 - fi.intensity * 6.5  # 7–13.5 V
+                    v_nom = self.cfg.bus_voltage_nominal
+                    v_sag = v_nom - fi.intensity * 6.5  # sag below nominal
                     # U-shape: ramp down in first 10 %, hold at sag, ramp up over last 20 %
                     ramp_down = max(int(n_fault * 0.10), 1)
                     hold_end = max(int(n_fault * 0.80), ramp_down + 1)
                     ramp_up_n = n_fault - hold_end
                     crank_v = np.empty(n_fault)
-                    crank_v[:ramp_down] = np.linspace(13.5, v_sag, ramp_down)
+                    crank_v[:ramp_down] = np.linspace(v_nom, v_sag, ramp_down)
                     crank_v[ramp_down:hold_end] = v_sag
                     if ramp_up_n > 0:
-                        crank_v[hold_end:] = np.linspace(v_sag, 13.5, ramp_up_n)
+                        crank_v[hold_end:] = np.linspace(v_sag, v_nom, ramp_up_n)
                     bus_voltage[sl] = crank_v + self.rng.normal(0, 0.15, n_fault)
                     voltage[sl] = bus_voltage[sl] + self.rng.normal(0, 0.08, n_fault)
                     # Resistive loads see reduced current proportional to voltage sag
-                    v_ratio_crank = np.clip(bus_voltage[sl] / 13.5, 0.3, 1.2)
+                    v_ratio_crank = np.clip(bus_voltage[sl] / v_nom, 0.3, 1.2)
                     current[sl] = ch.nominal_current_a * v_ratio_crank + self._composite_noise(
                         n_fault, ch
                     )

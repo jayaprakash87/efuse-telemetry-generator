@@ -92,6 +92,11 @@ class SimulationConfig(BaseModel):
     duration_s: float = 60.0
     sample_interval_ms: float = 100.0
     seed: int = 42
+    bus_voltage_nominal: float = Field(
+        default=13.5,
+        gt=0.0,
+        description="Nominal bus voltage in V. 13.5 V typical; set to 9 or 12 for supply-corner sweeps.",
+    )
     zones: list[ZoneController] = Field(
         default_factory=list, description="Zone Controllers in the vehicle"
     )
