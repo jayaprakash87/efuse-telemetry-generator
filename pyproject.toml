@@ -25,6 +25,10 @@ dev = [
     "pytest-cov",
     "ruff",
 ]
+dashboard = [
+    "streamlit>=1.32",
+    "plotly>=5.0",
+]
 
 [project.scripts]
 vip-gen = "vip_datagen.cli:app"

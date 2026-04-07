@@ -8,6 +8,7 @@ build/
 .pytest_cache/
 .ruff_cache/
 output/
+.streamlit/
 artifacts/
 *.parquet
 *.csv
