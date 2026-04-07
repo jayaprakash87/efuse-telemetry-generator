@@ -1,12 +1,12 @@
-"""Drive cycle planner — realistic multi-day driving schedules.
+"""Drive-cycle planning and multi-cycle orchestration.
 
 Generates a calendar of ignition cycles (SLEEP → CRANK → ACTIVE → SLEEP)
 spread over N days with:
-  - variable trips per day (Poisson-distributed, profile-dependent)
-  - log-normal trip durations (short errands to long highway drives)
-  - daily ambient temperature random walk with diurnal variation
-  - stochastic fault injection (Poisson rate per vehicle-hour)
-  - progressive fault degradation (connector aging, gradual degradation)
+    - variable trips per day (Poisson-distributed, profile-dependent)
+    - log-normal trip durations (short errands to long highway drives)
+    - mean-reverting ambient temperature trajectory with per-trip diurnal variation
+    - stochastic fault injection (Poisson rate per vehicle-hour)
+    - progressive wear for connector aging and gradual degradation
 """
 
 from __future__ import annotations
@@ -59,9 +59,9 @@ class DriveCyclePlanner:
     """Generate a realistic multi-day schedule of drive cycles."""
 
     # Per-cycle power-state overhead (seconds)
-    PRE_SLEEP_S = 2.0  # SLEEP before crank (ECU wake)
+    PRE_SLEEP_S = 2.0  # Pre-drive sleep window before crank
     CRANK_S = 3.0  # Starter engaged
-    POST_SETTLE_S = 5.0  # Post-drive settle → SLEEP
+    POST_SETTLE_S = 5.0  # Post-drive settle before returning to sleep
 
     # Fault duration bounds per type (seconds)
     FAULT_DURATION: dict[FaultType, tuple[float, float]] = {

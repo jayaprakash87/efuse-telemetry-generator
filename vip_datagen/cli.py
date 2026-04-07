@@ -1,17 +1,19 @@
-"""CLI for the VIP synthetic eFuse data generator.
+"""CLI for VIP Data Generator.
 
-Usage
------
-  vip-gen generate                          # default 3-channel scenario → output/
-  vip-gen generate --config configs/example_65ch.yaml
-  vip-gen generate --config configs/default.yaml --output my_run/ --format csv
-  vip-gen generate --duration 120 --channels 5 --seed 99
+Example usage:
+    vip-gen
+    vip-gen --config configs/zone_controller_full.yaml
+    vip-gen --config configs/one_month.yaml
+    vip-gen --config configs/default.yaml --output my_run/ --format csv
+    vip-gen --config configs/default.yaml --duration 120 --seed 99
 
 The generator produces:
-  <output>/<run_id>/telemetry.parquet    raw per-sample eFuse signals
-  <output>/<run_id>/features.parquet     rolling derived features
-  <output>/<run_id>/labels.parquet       ground-truth fault windows
-  <output>/<run_id>/config.yaml          snapshot of the config used
+    <output>/<run_id>/telemetry.parquet         raw per-sample eFuse signals
+    <output>/<run_id>/features.parquet          rolling derived features
+    <output>/<run_id>/labels.parquet            ground-truth fault windows
+    <output>/<run_id>/channel_manifest.parquet  per-channel metadata for the dashboard
+    <output>/<run_id>/drive_cycles.parquet      multi-cycle schedule metadata (optional)
+    <output>/<run_id>/config.yaml               snapshot of the config used
 """
 
 from __future__ import annotations

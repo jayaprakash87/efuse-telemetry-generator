@@ -1,7 +1,8 @@
-"""Storage — persist telemetry, features, alerts to local files.
+"""Persistence helpers for generator outputs.
 
-Supports Parquet (default), CSV, and JSON.
-Optional backend sync is stubbed for future implementation.
+Writes telemetry, features, labels, channel manifests, drive-cycle
+metadata, and optional alert payloads to local files. Supports Parquet
+(default), CSV, and JSON.
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ log = get_logger(__name__)
 
 
 class StorageWriter:
-    """Writes DataFrames and alert dicts to local storage."""
+    """Write generator DataFrames and alert payloads to local storage."""
 
     def __init__(self, config: StorageConfig | None = None, disk_min_free_mb: int = 0) -> None:
         self.cfg = config or StorageConfig()

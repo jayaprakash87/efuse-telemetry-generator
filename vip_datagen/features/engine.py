@@ -1,7 +1,8 @@
-"""Feature engineering — rolling / derived metrics from normalized telemetry.
+"""Feature engineering for generated telemetry.
 
-Operates on per-channel DataFrames.  Designed to work in batch (full DF)
-or incrementally (append new rows and recompute tail).
+Computes rolling statistics and protection-related signals from the raw
+telemetry DataFrame emitted by ``TelemetryGenerator``. Works for both
+single-cycle and multi-cycle datasets.
 """
 
 from __future__ import annotations
@@ -17,15 +18,16 @@ log = get_logger(__name__)
 
 
 class FeatureEngine:
-    """Computes derived features from normalized telemetry."""
+    """Compute rolling derived features from generated telemetry."""
 
     def __init__(self, config: FeatureConfig | None = None) -> None:
         self.cfg = config or FeatureConfig()
 
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add derived feature columns to a normalized telemetry DataFrame.
+        """Append derived feature columns to a telemetry DataFrame.
 
-        The input must be sorted by (channel_id, timestamp).
+        The input must contain per-sample telemetry columns such as
+        ``channel_id``, ``timestamp``, ``current_a``, and ``temperature_c``.
         Returns a new DataFrame with feature columns appended.
         """
         df = df.copy()

@@ -1,8 +1,10 @@
-"""eFuse Telemetry Dashboard — vip-data-generator.
+"""Streamlit dashboard for VIP Data Generator outputs.
 
 Launch:
     streamlit run dashboard/app.py
-    streamlit run dashboard/app.py -- --output path/to/run
+
+The app reads runs directly from the repository's ``output/`` directory and
+supports both single-cycle and multi-cycle datasets.
 """
 
 from __future__ import annotations
@@ -418,7 +420,8 @@ with tab_telemetry:
                     fillcolor=fill, line=dict(width=0), layer="below",
                 ))
 
-        # State_on_off: grey ribbon where channel is powered off
+            # state_on_off: grey ribbon where the channel is unpowered because of
+            # sleep, duty-cycle gating, or a protection shutdown.
         off_mask = ~ch_tel["state_on_off"].astype(bool)
         if off_mask.any():
             off_ts = ch_tel.loc[off_mask, "timestamp"]

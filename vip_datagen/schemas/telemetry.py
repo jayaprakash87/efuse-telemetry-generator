@@ -1,23 +1,19 @@
-"""Telemetry schemas for the Vehicle Intelligence Platform.
+"""Core schemas for VIP Data Generator.
 
-This product detects and predicts eFuse faults in automotive electrical
-systems by analysing current, voltage, and temperature telemetry from
-Zone Controllers.
+The repository generates synthetic eFuse telemetry for automotive Zone
+Controller architectures and emits three primary artefacts:
 
-Data flows through three stages, each with a dedicated schema:
-
-    TelemetryRecord  →  DerivedFeatures  →  InferenceResult
-     (raw samples)      (rolling stats)     (fault verdict)
+        TelemetryRecord  →  DerivedFeatures  →  EventLabel
+         (raw samples)      (rolling stats)     (ground-truth labels)
 
 Supporting schemas:
-  ChannelMeta      Per-channel static config (load profile, IC thresholds)
-  EFuseProfile     IC-family electrical template (catalog look-up)
-  ZoneController   Physical ECU hosting the eFuse ICs
-  FaultInjection   Fault definition for simulation scenarios
-  EventLabel       Ground-truth label for supervised evaluation
+    ChannelMeta      Per-channel static config and load/eFuse metadata
+    EFuseProfile     IC-family electrical template from the catalog
+    ZoneController   Physical ECU hosting the eFuse ICs
+    FaultInjection   Fault definition for simulation scenarios
 
-Validation happens at system boundaries (ingestion, inference output).
-Internal hot-path code uses dicts/DataFrames for speed.
+The codebase also retains a few forward-looking schema types used for
+experimentation and future downstream consumers.
 """
 
 from __future__ import annotations
@@ -623,7 +619,12 @@ class FaultInjection(BaseModel):
 
 
 class DerivedFeatures(BaseModel):
-    """Rolling / derived features computed from raw telemetry."""
+    """Rolling features computed from raw telemetry samples.
+
+    This schema mirrors the columns emitted by ``FeatureEngine``. Some
+    fields remain optional or forward-looking so the schema can cover both
+    current batch output and future online feature pipelines.
+    """
 
     timestamp: datetime
     channel_id: str
@@ -645,7 +646,11 @@ class DerivedFeatures(BaseModel):
 
 
 class InferenceResult(BaseModel):
-    """Output of the inference pipeline for one evaluation window."""
+    """Placeholder schema for downstream inference consumers.
+
+    The current repository does not ship an inference pipeline, but this
+    model documents the shape expected by future scored/anomaly outputs.
+    """
 
     timestamp: datetime
     channel_id: str

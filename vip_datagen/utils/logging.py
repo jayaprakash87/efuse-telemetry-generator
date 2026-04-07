@@ -7,8 +7,8 @@ All log records include:
   - message
   - run_id  (correlation ID — ties all log lines in a pipeline run together)
 
-Use ``configure_logging()`` once at process start (CLI entry point) to set
-the format and run ID.  Module-level code just calls ``get_logger(__name__)``.
+Use ``configure_logging()`` once at process start (typically in the CLI) to
+set the format and run ID. Module-level code just calls ``get_logger(__name__)``.
 """
 
 from __future__ import annotations

@@ -2,12 +2,12 @@
 
 Produces time-series DataFrames that approximate real eFuse telemetry.
 Signal realism features:
-  - Composite noise (1/f + quantization + thermal + EMI)
-  - First-order RC junction temperature model
-  - Shared bus voltage with alternator ripple
-  - Load-type-specific turn-on transients
-  - Realistic fault waveforms (exponential rise/fall, oscillations)
-  - eFuse protection response (trip → off → cooldown → retry)
+    - Composite noise (1/f + quantization + thermal + EMI)
+    - First-order RC junction temperature model
+    - Shared low-frequency bus voltage drift suitable for CAN-sampled data
+    - Load-type-specific turn-on transients and duty-cycle gating
+    - Realistic fault waveforms (exponential rise/fall, oscillations)
+    - eFuse protection response (trip → cooldown → retry → latch-off)
 """
 
 from __future__ import annotations
@@ -55,7 +55,8 @@ class TelemetryGenerator:
             else:
                 ch_intervals[ch.channel_id] = self.cfg.sample_interval_ms
 
-        # Bus voltage at the finest granularity across all channels
+        # Bus voltage is generated once at the finest channel cadence and then
+        # downsampled per channel so all outputs share the same low-frequency bus behaviour.
         finest_ms = min(ch_intervals.values())
         finest_s = finest_ms / 1000
         n_finest = int(self.cfg.duration_s / finest_s)
@@ -88,7 +89,7 @@ class TelemetryGenerator:
 
             ch_faults = [f for f in self.cfg.fault_injections if f.channel_id == ch.channel_id]
 
-            # Downsample power states to this channel's rate (list, not numpy array)
+            # Downsample power states to this channel's rate while preserving enum values.
             if interval_ms == finest_ms:
                 power_states = power_states_fine[:n_samples]
             else:
@@ -109,10 +110,8 @@ class TelemetryGenerator:
 
         # --- Multi-channel die thermal coupling ---
         # Channels sharing the same die_id exchange heat through the substrate.
-        # For each die group, the steady-state ΔT of every other channel on the
-        # same die is injected into this channel scaled by thermal_coupling_coeff.
-        # ΔT_neighbour = (T_mean - T_ambient) is the heat source;
-        # We add k × ΔT_neighbour to the target channel's temperature array.
+        # For each die group, the per-sample ΔT of every neighbouring channel is
+        # injected into the target channel scaled by thermal_coupling_coeff.
         if not telem_df.empty and "temperature_c" in telem_df.columns:
             telem_df = self._apply_die_thermal_coupling(telem_df)
 

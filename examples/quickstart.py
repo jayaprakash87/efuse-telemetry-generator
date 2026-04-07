@@ -1,13 +1,13 @@
-"""Quickstart example — generate a labelled eFuse telemetry dataset.
+"""Quickstart example for the end-to-end generation pipeline.
 
 Run:
-    python examples/quickstart.py
+        python examples/quickstart.py
 
 Outputs to output/quickstart/:
-  telemetry.parquet  — raw eFuse signals (current, voltage, temperature, state, protection events)
-  features.parquet   — rolling derived features (RMS, spike score, temp slope, …)
-  labels.parquet     — ground-truth fault windows for each injected fault
-  config.yaml        — full scenario config snapshot for reproducibility
+    telemetry.parquet         raw eFuse signals
+    features.parquet          rolling derived features
+    labels.parquet            ground-truth fault windows
+    channel_manifest.parquet  per-channel metadata
 """
 
 from __future__ import annotations
@@ -66,6 +66,7 @@ writer.write_telemetry(telem_df)
 writer.write_features(features_df)
 if not labels_df.empty:
     writer.write_labels(labels_df)
+writer.write_channel_manifest(sim_cfg.channels)
 
 print(f"\nFiles saved to: {out_dir.resolve()}/")
 
@@ -75,4 +76,4 @@ print(f"\nFiles saved to: {out_dir.resolve()}/")
 t = pd.read_parquet(out_dir / "telemetry.parquet")
 print(f"\nSanity check — loaded {len(t):,} rows from parquet, "
       f"{t['channel_id'].nunique()} channels, "
-      f"{t['fault_active'].value_counts().to_dict()}")
+    f"{int(t['trip_flag'].sum())} trip samples")
