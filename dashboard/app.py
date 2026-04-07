@@ -65,6 +65,14 @@ def load_run(run_dir: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     return tel, feat, lab
 
 
+@st.cache_data(show_spinner=False)
+def load_manifest(run_dir: str) -> pd.DataFrame | None:
+    p = Path(run_dir) / "channel_manifest.parquet"
+    if not p.exists():
+        return None
+    return pd.read_parquet(p)
+
+
 def list_runs() -> list[str]:
     if not OUTPUT_ROOT.exists():
         return []
@@ -72,56 +80,6 @@ def list_runs() -> list[str]:
         [str(d) for d in OUTPUT_ROOT.iterdir() if d.is_dir()],
         reverse=True,
     )
-
-
-def fault_shapes(
-    labels: pd.DataFrame,
-    channel: str,
-    y_range: tuple[float, float] = (0, 1),
-    show_in_legend_for: set | None = None,
-) -> list[dict]:
-    """Return Plotly shape + annotation dicts for fault windows on a channel."""
-    ch_lab = labels[labels["channel_id"] == channel]
-    shapes = []
-    if show_in_legend_for is None:
-        show_in_legend_for = set()
-
-    for fault_type in ch_lab["fault_type"].unique():
-        if fault_type == "none":
-            continue
-        color = FAULT_PALETTE.get(fault_type, "#999999")
-        fill = color.replace(")", ", 0.18)").replace("rgb(", "rgba(") if color.startswith("rgb") else (
-            color + "30" if color.startswith("#") else color
-        )
-        windows = ch_lab[ch_lab["fault_type"] == fault_type]
-        # Merge consecutive timestamps into contiguous windows
-        ts = windows["timestamp"].sort_values()
-        gap = pd.Timedelta("500ms")
-        start = ts.iloc[0]
-        prev = ts.iloc[0]
-        for t in ts.iloc[1:]:
-            if t - prev > gap:
-                shapes.append({
-                    "type": "rect",
-                    "x0": str(start), "x1": str(prev),
-                    "y0": y_range[0], "y1": y_range[1],
-                    "fillcolor": fill,
-                    "line": {"width": 0},
-                    "layer": "below",
-                    "label": fault_type if fault_type not in show_in_legend_for else None,
-                })
-                show_in_legend_for.add(fault_type)
-                start = t
-            prev = t
-        shapes.append({
-            "type": "rect",
-            "x0": str(start), "x1": str(prev),
-            "y0": y_range[0], "y1": y_range[1],
-            "fillcolor": fill,
-            "line": {"width": 0},
-            "layer": "below",
-        })
-    return shapes
 
 
 # ---------------------------------------------------------------------------
@@ -141,9 +99,28 @@ if not runs:
 
 selected_run = st.sidebar.selectbox("Output run", runs, index=0, format_func=lambda p: Path(p).name)
 tel, feat, lab = load_run(selected_run)
+manifest = load_manifest(selected_run)
 
-channels = sorted(tel["channel_id"].unique().tolist())
-selected_channels = st.sidebar.multiselect("Channels", channels, default=channels[:4])
+# Zone filter (only when manifest is available)
+if manifest is not None:
+    all_zones = sorted(manifest["zone_id"].dropna().unique().tolist())
+    sel_zones = st.sidebar.multiselect("Zone filter", all_zones, default=all_zones)
+    zone_ch_ids = set(manifest[manifest["zone_id"].isin(sel_zones)]["channel_id"].tolist())
+    channels = sorted([c for c in tel["channel_id"].unique() if c in zone_ch_ids])
+    label_map: dict[str, str] = {
+        row.channel_id: f"{row.channel_id} — {row.load_name}" if row.load_name else row.channel_id
+        for row in manifest.itertuples()
+    }
+else:
+    channels = sorted(tel["channel_id"].unique().tolist())
+    label_map = {}
+
+selected_channels = st.sidebar.multiselect(
+    "Channels",
+    channels,
+    default=channels[:4],
+    format_func=lambda c: label_map.get(c, c),
+)
 if not selected_channels:
     st.warning("Select at least one channel.")
     st.stop()
@@ -156,12 +133,13 @@ st.sidebar.caption(f"Samples: {len(tel):,} | Channels: {len(channels)}")
 # Tabs
 # ---------------------------------------------------------------------------
 
-tab_overview, tab_telemetry, tab_features, tab_faults, tab_protection = st.tabs([
+tab_overview, tab_telemetry, tab_features, tab_faults, tab_protection, tab_config = st.tabs([
     "📊 Overview",
     "📡 Telemetry",
     "🔬 Features",
     "⚠️ Fault Analysis",
     "🛡️ Protection Events",
+    "📋 Config",
 ])
 
 # ============================================================
@@ -254,10 +232,18 @@ with tab_overview:
 # ============================================================
 with tab_telemetry:
     st.header("Raw Telemetry Time Series")
-    st.caption("Fault injection windows shown as shaded regions.")
+    st.caption("Fault injection windows shown as shaded regions. Grey shading = channel powered off.")
 
-    for ch in selected_channels:
-        st.markdown(f"#### Channel: `{ch}`")
+    vis_channels = selected_channels
+    if len(vis_channels) > 8:
+        st.warning(
+            f"Displaying first 8 of {len(selected_channels)} selected channels to keep the page responsive."
+        )
+        vis_channels = vis_channels[:8]
+
+    for ch in vis_channels:
+        ch_label = label_map.get(ch, ch)
+        st.markdown(f"#### `{ch_label}`")
         ch_tel = tel[tel["channel_id"] == ch].sort_values("timestamp")
         ch_lab = lab[lab["channel_id"] == ch]
 
@@ -370,6 +356,41 @@ with tab_telemetry:
                     fillcolor=fill, line=dict(width=0), layer="below",
                 ))
 
+        # State_on_off: grey ribbon where channel is powered off
+        off_mask = ~ch_tel["state_on_off"].astype(bool)
+        if off_mask.any():
+            off_ts = ch_tel.loc[off_mask, "timestamp"]
+            gap = pd.Timedelta("200ms")
+            start = prev = off_ts.iloc[0]
+            _ranges = [(i_min, i_max), (v_min, v_max), (t_min, t_max)]
+            for t in off_ts.iloc[1:]:
+                if t - prev > gap:
+                    for row_idx, (y0, y1) in enumerate(_ranges, start=1):
+                        shapes.append(dict(
+                            type="rect", xref="x", yref=f"y{row_idx if row_idx > 1 else ''}",
+                            x0=start, x1=prev, y0=y0, y1=y1,
+                            fillcolor="rgba(100,100,100,0.12)", line=dict(width=0), layer="below",
+                        ))
+                    start = t
+                prev = t
+            for row_idx, (y0, y1) in enumerate(_ranges, start=1):
+                shapes.append(dict(
+                    type="rect", xref="x", yref=f"y{row_idx if row_idx > 1 else ''}",
+                    x0=start, x1=prev, y0=y0, y1=y1,
+                    fillcolor="rgba(100,100,100,0.12)", line=dict(width=0), layer="below",
+                ))
+            # Legend entry for off state
+            fig.add_trace(
+                go.Scatter(
+                    x=[None], y=[None],
+                    mode="markers",
+                    marker=dict(size=10, color="rgba(100,100,100,0.3)", symbol="square"),
+                    name="Channel off",
+                    showlegend=True,
+                ),
+                row=1, col=1,
+            )
+
         fig.update_layout(
             shapes=shapes,
             height=500,
@@ -397,7 +418,6 @@ with tab_features:
         "trip_frequency",
         "degradation_trend",
         "recovery_time_s",
-        "anomaly_score",
         "protection_event_rate",
         "rolling_voltage_drop",
     ]
@@ -412,7 +432,8 @@ with tab_features:
         st.info("Select at least one feature.")
     else:
         for ch in selected_channels:
-            st.markdown(f"#### Channel: `{ch}`")
+            ch_label = label_map.get(ch, ch)
+            st.markdown(f"#### `{ch_label}`")
             ch_feat = feat[feat["channel_id"] == ch].sort_values("timestamp")
             ch_lab = lab[lab["channel_id"] == ch]
 
@@ -603,19 +624,24 @@ with tab_protection:
             st.info("protection_event_rate not in features.")
 
     with col_r:
-        st.subheader("Cumulative Protection Events by Type")
-        count_cols = [c for c in avail_prot if c.endswith("_count")]
-        if count_cols:
-            ch_prot = feat[feat["channel_id"].isin(selected_channels)]
-            totals = (
-                ch_prot.groupby("channel_id")[count_cols]
-                .max()
-                .reset_index()
-                .melt(id_vars="channel_id", var_name="Event Type", value_name="Count")
-            )
-            totals["Event Type"] = totals["Event Type"].str.replace("_count", "").str.replace("_", " ").str.upper()
+        st.subheader("Protection Events by Type")
+        _event_vals = ["scp", "i2t", "latch_off", "thermal_shutdown", "open_load_diag", "over_voltage"]
+        event_rows = []
+        for _ch in selected_channels:
+            _ch_tel = tel[tel["channel_id"] == _ch].sort_values("timestamp")
+            for _ev in _event_vals:
+                _is_active = (_ch_tel["protection_event"] == _ev).astype(int)
+                _edges = int(_is_active.diff().clip(lower=0).sum())
+                if _edges > 0:
+                    event_rows.append({
+                        "channel_id": _ch,
+                        "Event Type": _ev.upper().replace("_", " "),
+                        "Count": _edges,
+                    })
+        if event_rows:
+            _totals_df = pd.DataFrame(event_rows)
             bar_prot = px.bar(
-                totals,
+                _totals_df,
                 x="channel_id",
                 y="Count",
                 color="Event Type",
@@ -625,18 +651,16 @@ with tab_protection:
             bar_prot.update_layout(height=300, margin=dict(t=10, b=10))
             st.plotly_chart(bar_prot, width="stretch")
         else:
-            st.info("No protection event count columns found.")
+            st.info("No protection events for selected channels.")
 
     st.subheader("Protection Event Heatmap")
-    if count_cols and len(selected_channels) > 1:
-        ch_prot = feat[feat["channel_id"].isin(selected_channels)]
-        heat_df = (
-            ch_prot.groupby("channel_id")[count_cols]
-            .max()
-            .rename(columns=lambda c: c.replace("_count", "").upper())
+    if event_rows and len(selected_channels) > 1:
+        _heat_df = (
+            pd.DataFrame(event_rows)
+            .pivot_table(index="channel_id", columns="Event Type", values="Count", fill_value=0)
         )
         fig_heat = px.imshow(
-            heat_df,
+            _heat_df,
             text_auto=True,
             color_continuous_scale="Reds",
             labels={"x": "Event Type", "y": "Channel", "color": "Count"},
@@ -644,6 +668,55 @@ with tab_protection:
         )
         fig_heat.update_layout(height=300, margin=dict(t=10, b=10))
         st.plotly_chart(fig_heat, width="stretch")
-    else:
-        if len(selected_channels) == 1:
-            st.info("Select multiple channels to see the heatmap.")
+    elif len(selected_channels) == 1:
+        st.info("Select multiple channels to see the heatmap.")
+
+# ============================================================
+# TAB 6 — CONFIG / METADATA
+# ============================================================
+with tab_config:
+    st.header("Scenario Config & Channel Inventory")
+
+    col_l, col_r = st.columns([1, 2])
+
+    with col_l:
+        st.subheader("Run info")
+        run_name = Path(selected_run).name
+        st.markdown(f"**Run ID:** `{run_name}`")
+        st.markdown(f"**Samples:** {len(tel):,}")
+        st.markdown(f"**Channels:** {len(channels)}")
+        duration_s = (tel["timestamp"].max() - tel["timestamp"].min()).total_seconds()
+        st.markdown(f"**Duration:** {duration_s:.0f} s")
+
+        config_path = Path(selected_run) / "config.yaml"
+        if config_path.exists():
+            st.subheader("Config YAML")
+            with open(config_path) as _f:
+                _yaml_text = _f.read()
+            st.code(_yaml_text, language="yaml")
+
+    with col_r:
+        st.subheader("Channel inventory")
+        if manifest is not None:
+            display_cols = [
+                "channel_id", "zone_id", "load_name", "system_cluster",
+                "efuse_family", "load_type", "power_class",
+                "nominal_current_a", "duty_cycle",
+            ]
+            _inv = manifest[[c for c in display_cols if c in manifest.columns]].copy()
+            _inv.columns = [c.replace("_", " ").title() for c in _inv.columns]
+            st.dataframe(_inv, width="stretch", hide_index=True)
+
+            st.subheader("Zone distribution")
+            _zone_counts = manifest.groupby("zone_id").size().reset_index(name="Channels")
+            _zone_bar = px.bar(
+                _zone_counts,
+                x="zone_id",
+                y="Channels",
+                labels={"zone_id": "Zone"},
+                color="zone_id",
+            )
+            _zone_bar.update_layout(showlegend=False, height=250, margin=dict(t=10, b=10))
+            st.plotly_chart(_zone_bar, width="stretch")
+        else:
+            st.info("No channel_manifest.parquet found for this run. Re-generate with the latest vip-gen.")
