@@ -1,6 +1,6 @@
 # eFuse Telemetry Use-Case Library
 
-This library contains **15 use cases** organised by the **engineering decision** each one supports — not by department, lifecycle phase, or cost category.
+This library contains **20 use cases** organised by the **engineering decision** each one supports — not by department, lifecycle phase, or cost category.
 
 Every use case follows the same [template](_template.md): one decision, one trigger, measurable KPIs, explicit pass/fail criteria, and honest limitations.
 
@@ -12,6 +12,14 @@ Start from the question you need to answer:
 
 ```
 What decision do I need to make?
+│
+├─ "What training data do I need for my ML model?"
+│   └─ 0-ml-datasets/
+│       ├─ Fault Classifier Training ─────────── labelled dataset for supervised fault classification
+│       ├─ Anomaly Detection Pre-training ─────── clean normal-operations baseline for one-class models
+│       ├─ Pre-Trip Sequence Prediction ──────── labelled windows for trip-prediction time-series models
+│       ├─ Synthetic Pre-training + Real Fine-tuning ─ transfer learning workflow for scarce real data
+│       └─ Threshold Search via Simulation Sweeps ─── automated parameter sweep for calibration
 │
 ├─ "Will my protection strategy work?"
 │   └─ 1-protection-design/
@@ -61,7 +69,8 @@ What decision do I need to make?
 | **CAN / network architect** | [CAN Telemetry Fidelity](4-vehicle-integration/can-telemetry-fidelity.md) |
 | **Validation / test planner** | [Pre-Certification Screening](5-compliance-and-safety/pre-certification-screening.md) |
 | **Safety / FMEA engineer** | [Safety Coverage Mapping](5-compliance-and-safety/safety-coverage-mapping.md) |
-| **Fleet analytics / data science** | [Degradation Early Warning](6-field-and-fleet/degradation-early-warning.md) |
+| **ML / data science team** | [Fault Classifier Training](0-ml-datasets/fault-classifier-training.md), [Anomaly Detection Pre-training](0-ml-datasets/anomaly-detection-pretraining.md), [Pre-Trip Sequence Prediction](0-ml-datasets/pre-trip-sequence-prediction.md) |
+| **Fleet analytics / data science** | [Degradation Early Warning](6-field-and-fleet/degradation-early-warning.md), [Synthetic Pre-training + Real Fine-tuning](0-ml-datasets/synthetic-pretraining-real-finetuning.md) |
 | **Quality / warranty team** | [Field-Driven Recalibration](6-field-and-fleet/field-driven-recalibration.md) |
 | **Platform / variant manager** | [Variant Reuse Validation](1-protection-design/variant-reuse-validation.md) |
 | **SW release manager** | [Release Regression Gating](1-protection-design/release-regression-gating.md) |
@@ -73,6 +82,18 @@ What decision do I need to make?
 Use cases are not independent — decisions flow from architecture through to field operations.
 
 ```
+Fault Classifier ─────────────────────────────────────────────────┐
+Training                                                          │
+                                                                  ↓
+Anomaly Detection ──→ Synthetic Pre-training + Real Fine-tuning ──→ Fleet Anomaly Alerting
+Pre-training
+
+Threshold Search ──→ Threshold & Retry Calibration ──→ Release Regression Gating
+via Simulation
+
+Pre-Trip Sequence ──→ ECU Load Management Strategy
+Prediction
+
 IC Benchmarking ──────┐
                       ├──→ Threshold Calibration ──→ Release Regression Gating
 Wiring & Connector ───┤         │                            │
