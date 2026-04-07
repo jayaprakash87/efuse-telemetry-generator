@@ -118,16 +118,93 @@ def generate(
     console.rule("[bold cyan]VIP Data Generator")
     console.print(f"  Scenario  : [bold]{sim_cfg.name}[/bold]")
     console.print(f"  Channels  : {len(sim_cfg.channels)}")
-    console.print(f"  Duration  : {sim_cfg.duration_s}s  |  Interval: {sim_cfg.sample_interval_ms}ms")
     console.print(f"  Seed      : {sim_cfg.seed}")
     console.print(f"  Output    : {out_dir}/")
-    console.print()
 
-    # 1. Generate raw telemetry
-    console.print("[cyan]Generating telemetry...[/cyan]")
-    gen = TelemetryGenerator(sim_cfg)
-    telem_df, labels_df = gen.generate()
-    log.info("Generated %d telemetry rows across %d channels", len(telem_df), len(sim_cfg.channels))
+    # ------------------------------------------------------------------
+    # Multi-cycle mode (drive_cycle.enabled = true)
+    # ------------------------------------------------------------------
+    if sim_cfg.drive_cycle.enabled:
+        from datetime import timezone
+
+        from rich.progress import BarColumn, Progress, TextColumn, TimeRemainingColumn
+
+        from vip_datagen.simulation.drive_cycles import (
+            DriveCyclePlanner,
+            generate_multi_cycle,
+        )
+
+        dc = sim_cfg.drive_cycle
+        console.print(
+            f"  Mode      : [bold magenta]Multi-cycle[/bold magenta]  "
+            f"({dc.total_days} days, profile={dc.profile})"
+        )
+        console.print(f"  Interval  : {sim_cfg.sample_interval_ms}ms")
+        console.print()
+
+        # Plan schedule
+        console.print("[cyan]Planning drive cycle schedule...[/cyan]")
+        base_time = (
+            datetime.now(tz=timezone.utc)
+            .replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        )
+        planner = DriveCyclePlanner(dc, seed=sim_cfg.seed)
+        cycles = planner.generate_schedule(base_time)
+        total_hours = sum(c.duration_s for c in cycles) / 3600
+        console.print(
+            f"  Cycles    : {len(cycles)}  |  "
+            f"Total driving: {total_hours:.1f} h"
+        )
+
+        # Distribute faults
+        console.print("[cyan]Distributing faults stochastically...[/cyan]")
+        faults_per_cycle = planner.distribute_faults(cycles, sim_cfg.channels)
+        total_faults = sum(len(v) for v in faults_per_cycle.values())
+        console.print(f"  Faults    : {total_faults} injections planned")
+        console.print()
+
+        # Generate each cycle with progress bar
+        console.print("[cyan]Generating telemetry per cycle...[/cyan]")
+        with Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TimeRemainingColumn(),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Cycles", total=len(cycles))
+
+            def _cb(done: int, total: int) -> None:
+                progress.update(task, completed=done)
+
+            telem_df, labels_df = generate_multi_cycle(
+                sim_cfg, cycles, faults_per_cycle, progress_callback=_cb
+            )
+
+        log.info(
+            "Generated %d telemetry rows across %d cycles",
+            len(telem_df),
+            len(cycles),
+        )
+
+    # ------------------------------------------------------------------
+    # Single-cycle mode (legacy / default)
+    # ------------------------------------------------------------------
+    else:
+        console.print(
+            f"  Duration  : {sim_cfg.duration_s}s  |  Interval: {sim_cfg.sample_interval_ms}ms"
+        )
+        console.print()
+
+        console.print("[cyan]Generating telemetry...[/cyan]")
+        gen = TelemetryGenerator(sim_cfg)
+        telem_df, labels_df = gen.generate()
+        log.info(
+            "Generated %d telemetry rows across %d channels",
+            len(telem_df),
+            len(sim_cfg.channels),
+        )
+        cycles = None  # no drive-cycle schedule to write
 
     # 2. Compute rolling features
     console.print("[cyan]Computing features...[/cyan]")
@@ -143,6 +220,8 @@ def generate(
     if not labels_df.empty:
         writer.write_labels(labels_df)
     writer.write_channel_manifest(sim_cfg.channels)
+    if cycles:
+        writer.write_drive_cycles(cycles)
 
     # 4. Save config snapshot
     config_snapshot = out_dir / "config.yaml"
@@ -155,6 +234,9 @@ def generate(
     console.print(f"  Telemetry  : {len(telem_df):,} rows")
     console.print(f"  Features   : {len(features_df):,} rows × {len(features_df.columns)} cols")
     console.print(f"  Fault wins : {len(labels_df):,} labelled samples")
+    if cycles:
+        console.print(f"  Cycles     : {len(cycles)}")
+        console.print(f"  Driving    : {sum(c.duration_s for c in cycles)/3600:.1f} hours")
     console.print(f"  Files      : {out_dir}/")
     console.print()
 

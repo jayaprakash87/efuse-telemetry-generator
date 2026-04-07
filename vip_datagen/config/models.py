@@ -38,6 +38,52 @@ class PowerStateEvent(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class FaultRateConfig(BaseModel):
+    """Fault occurrence rates — probability per vehicle-hour of driving.
+
+    When a Poisson draw fires, one random eligible channel is picked.
+    """
+
+    overload_spike: float = Field(default=0.05, ge=0)
+    intermittent_overload: float = Field(default=0.03, ge=0)
+    voltage_sag: float = Field(default=0.04, ge=0)
+    thermal_drift: float = Field(default=0.02, ge=0)
+    noisy_sensor: float = Field(default=0.03, ge=0)
+    connector_aging: float = Field(default=0.01, ge=0)
+    open_load: float = Field(default=0.005, ge=0)
+    gradual_degradation: float = Field(default=0.01, ge=0)
+    cold_crank: float = Field(default=0.5, ge=0)  # conditional on ambient < 5 °C
+    jump_start: float = Field(default=0.002, ge=0)
+    load_dump: float = Field(default=0.02, ge=0)
+    thermal_coupling: float = Field(default=0.03, ge=0)
+    wake_transient: float = Field(default=0.15, ge=0)
+
+
+class DriveCycleConfig(BaseModel):
+    """Multi-day drive cycle schedule configuration.
+
+    When ``enabled=True`` the planner auto-generates a realistic month-long
+    schedule of ignition cycles, overriding the top-level ``duration_s``,
+    ``power_state_events``, and ``fault_injections``.
+    """
+
+    enabled: bool = Field(default=False, description="Enable multi-cycle mode")
+    total_days: int = Field(default=30, ge=1, description="Simulation span in calendar days")
+    profile: str = Field(
+        default="mixed",
+        description="Driving profile: commuter | mixed | heavy",
+    )
+    mean_trips_per_day: float = Field(default=2.5, ge=0)
+    max_trips_per_day: int = Field(default=6, ge=1)
+    no_drive_day_probability: float = Field(default=0.10, ge=0, le=1)
+    min_trip_minutes: float = Field(default=5.0, ge=1)
+    max_trip_minutes: float = Field(default=240.0, ge=1)
+    median_trip_minutes: float = Field(default=30.0, ge=1)
+    ambient_temp_mean_c: float = Field(default=22.0, description="Seasonal mean ambient °C")
+    ambient_temp_std_c: float = Field(default=8.0, ge=0, description="Day-to-day σ °C")
+    fault_rates: FaultRateConfig = Field(default_factory=FaultRateConfig)
+
+
 class SimulationConfig(BaseModel):
     scenario_id: str = "default"
     name: str = "Default Scenario"
@@ -72,6 +118,10 @@ class SimulationConfig(BaseModel):
         default=False,
         description="When True, populate channels from the built-in 65-channel example topology.",
     )
+    drive_cycle: DriveCycleConfig = Field(
+        default_factory=DriveCycleConfig,
+        description="Multi-day drive cycle schedule. Overrides duration/faults/power_state when enabled.",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -103,11 +153,6 @@ class FeatureConfig(BaseModel):
         else:
             mp = max(int(self.min_duration_s / sample_interval_s), 1)
         return w, min(mp, w)
-
-
-# ---------------------------------------------------------------------------
-# Model config
-# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------

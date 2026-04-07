@@ -64,6 +64,25 @@ class StorageWriter:
         df = pd.DataFrame(rows)
         return self._write_df(df, name)
 
+    def write_drive_cycles(self, cycles, name: str = "drive_cycles") -> Path | None:
+        """Write drive-cycle schedule metadata."""
+        if not cycles:
+            return None
+        rows = [
+            {
+                "cycle_id": c.cycle_id,
+                "day": c.day,
+                "start_time": c.start_time,
+                "end_time": c.end_time,
+                "duration_s": c.duration_s,
+                "ambient_temp_c": c.ambient_temp_c,
+                "drive_type": c.drive_type,
+            }
+            for c in cycles
+        ]
+        df = pd.DataFrame(rows)
+        return self._write_df(df, name)
+
     def check_disk_space(self) -> bool:
         """Return True if disk has enough free space (or threshold is 0)."""
         if self._disk_min_free_mb <= 0:

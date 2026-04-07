@@ -35,7 +35,13 @@ class FeatureEngine:
         interval = self._interval_s(df)
         w, mp = self.cfg.resolve(interval)
 
-        grouped = df.groupby("channel_id")
+        # Group key: include drive_cycle_id when present so rolling
+        # windows do not span across separate ignition cycles.
+        group_cols: list[str] = ["channel_id"]
+        if "drive_cycle_id" in df.columns:
+            group_cols.append("drive_cycle_id")
+
+        grouped = df.groupby(group_cols)
 
         # Rolling current statistics
         df["rolling_rms_current"] = grouped["current_a"].transform(
@@ -92,7 +98,7 @@ class FeatureEngine:
             none_val = ProtectionEvent.NONE.value
             # Binary: any protection event active (1) or not (0)
             (pe != none_val).astype(int)
-            df["protection_event_rate"] = df.groupby("channel_id")["protection_event"].transform(
+            df["protection_event_rate"] = df.groupby(group_cols)["protection_event"].transform(
                 lambda s: (s != none_val).astype(int).rolling(w, min_periods=1).mean()
             )
             # Per-mechanism rolling counts
@@ -105,7 +111,7 @@ class FeatureEngine:
                 ProtectionEvent.OVER_VOLTAGE,
             ):
                 col_name = f"{event.value}_count"
-                df[col_name] = df.groupby("channel_id")["protection_event"].transform(
+                df[col_name] = df.groupby(group_cols)["protection_event"].transform(
                     lambda s, ev=event.value: (
                         (s == ev).astype(int).rolling(w * 2, min_periods=1).sum()
                     )

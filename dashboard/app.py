@@ -73,6 +73,18 @@ def load_manifest(run_dir: str) -> pd.DataFrame | None:
     return pd.read_parquet(p)
 
 
+@st.cache_data(show_spinner=False)
+def load_drive_cycles(run_dir: str) -> pd.DataFrame | None:
+    p = Path(run_dir) / "drive_cycles.parquet"
+    if not p.exists():
+        return None
+    dc = pd.read_parquet(p)
+    for col in ("start_time", "end_time"):
+        if col in dc.columns and dc[col].dt.tz is not None:
+            dc[col] = dc[col].dt.tz_convert("UTC").dt.tz_localize(None)
+    return dc
+
+
 def list_runs() -> list[str]:
     if not OUTPUT_ROOT.exists():
         return []
@@ -100,6 +112,24 @@ if not runs:
 selected_run = st.sidebar.selectbox("Output run", runs, index=0, format_func=lambda p: Path(p).name)
 tel, feat, lab = load_run(selected_run)
 manifest = load_manifest(selected_run)
+dc_df = load_drive_cycles(selected_run)
+
+# Drive cycle filter (multi-cycle runs only)
+is_multi_cycle = "drive_cycle_id" in tel.columns and dc_df is not None
+if is_multi_cycle:
+    _day_opts = sorted(dc_df["day"].unique().tolist())
+    _day_labels = {d: f"Day {d}" for d in _day_opts}
+    sel_days = st.sidebar.multiselect(
+        "Days",
+        _day_opts,
+        default=_day_opts,
+        format_func=lambda d: _day_labels.get(d, str(d)),
+    )
+    _cycle_ids = set(dc_df[dc_df["day"].isin(sel_days)]["cycle_id"].tolist())
+    tel = tel[tel["drive_cycle_id"].isin(_cycle_ids)]
+    feat = feat[feat["drive_cycle_id"].isin(_cycle_ids)]
+    if "drive_cycle_id" in lab.columns:
+        lab = lab[lab["drive_cycle_id"].isin(_cycle_ids)]
 
 # Zone filter (only when manifest is available)
 if manifest is not None:
@@ -153,12 +183,44 @@ with tab_overview:
     trip_events = tel["trip_flag"].sum()
     active_faults = lab[lab["fault_type"] != "none"]["fault_type"].nunique()
 
-    col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("Duration", f"{duration_s:.0f} s")
-    col2.metric("Channels", len(channels))
-    col3.metric("Total Samples", f"{len(tel):,}")
-    col4.metric("Fault Windows", f"{total_faults:,}")
-    col5.metric("Trip Events", f"{int(trip_events):,}")
+    if is_multi_cycle:
+        _dc_sel = dc_df[dc_df["cycle_id"].isin(_cycle_ids)]
+        _total_h = _dc_sel["duration_s"].sum() / 3600
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
+        col1.metric("Drive Cycles", len(_dc_sel))
+        col2.metric("Driving", f"{_total_h:.1f} h")
+        col3.metric("Channels", len(channels))
+        col4.metric("Total Samples", f"{len(tel):,}")
+        col5.metric("Fault Labels", f"{total_faults:,}")
+        col6.metric("Trip Events", f"{int(trip_events):,}")
+    else:
+        col1, col2, col3, col4, col5 = st.columns(5)
+        col1.metric("Duration", f"{duration_s:.0f} s")
+        col2.metric("Channels", len(channels))
+        col3.metric("Total Samples", f"{len(tel):,}")
+        col4.metric("Fault Windows", f"{total_faults:,}")
+        col5.metric("Trip Events", f"{int(trip_events):,}")
+
+    # Drive cycle timeline (multi-cycle only)
+    if is_multi_cycle:
+        st.markdown("---")
+        st.subheader("Drive Cycle Timeline")
+        _dc_plot = _dc_sel.copy()
+        _dc_plot["label"] = _dc_plot.apply(
+            lambda r: f"Day {r['day']} — {r['drive_type']} ({r['duration_s']/60:.0f} min, {r['ambient_temp_c']:.0f}°C)",
+            axis=1,
+        )
+        fig_dc = px.timeline(
+            _dc_plot,
+            x_start="start_time",
+            x_end="end_time",
+            y="drive_type",
+            color="drive_type",
+            hover_name="label",
+            labels={"drive_type": "Type"},
+        )
+        fig_dc.update_layout(height=250, margin=dict(t=10, b=10), showlegend=False)
+        st.plotly_chart(fig_dc, width="stretch")
 
     st.markdown("---")
     col_l, col_r = st.columns(2)
