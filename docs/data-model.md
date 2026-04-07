@@ -35,9 +35,9 @@ One row per sample per channel. At 1 s interval with 65 channels and 300 s, this
 | `temperature_c` | float64 | °C | Die junction temperature (RC thermal model output) |
 | `state_on_off` | int | 0/1 | Gate drive state: 1 = load energised, 0 = off (sleep, duty-cycle off, or tripped) |
 | `trip_flag` | int | 0/1 | 1 when protection has tripped the channel |
-| `protection_event` | string | — | Protection action this sample: `NONE`, `SCP`, `I2T`, `LATCH_OFF`, `THERMAL_SHUTDOWN`, `OPEN_LOAD_DIAG`, `OVER_VOLTAGE` |
+| `protection_event` | string | — | Protection action this sample: `none`, `scp`, `i2t`, `latch_off`, `thermal_shutdown`, `open_load_diag`, `over_voltage` |
 | `reset_counter` | int | — | Cumulative retry count since last latch-off clear |
-| `device_status` | string | — | eFuse IC status: `NORMAL`, `WARNING`, `FAULT`, `DISABLED` |
+| `device_status` | string | — | eFuse IC status: `ok`, `warning`, `fault`, `unknown` |
 | `drive_cycle_id` | int | — | Cycle index (multi-cycle only; absent in single-cycle runs) |
 
 ### Notes
@@ -119,7 +119,7 @@ One row per fault injection event. Ground-truth for supervised ML training.
 | `start_time` | datetime64[ns] | — | Fault window start |
 | `end_time` | datetime64[ns] | — | Fault window end |
 | `duration_s` | float64 | s | Fault duration |
-| `intensity` | float64 | 0.0–1.0 | Fault severity (dimensionless). Controls waveform amplitude. |
+| `severity` | float64 | 0.0–1.0 | Fault severity (dimensionless). Controls waveform amplitude. |
 | `drive_cycle_id` | int | — | Cycle index (multi-cycle only) |
 
 ### Fault Types
@@ -195,11 +195,11 @@ vip-gen --config output/20260407-114810-dgldik/config.yaml
 ### EFuseFamily
 
 ```
-BTS7002_1EPP, BTS7004_1EPP, BTS7006_1EPP, BTS7008_1EPP,
-BTS70041_2EPP, BTS70061_2EPP, BTS70081_2EPP,
-TLE9104SH, BTS81000,
-VN7140AJ, VND7020AJ, VNH7013AY, VNL5050, VND5025,
-CUSTOM
+inf_hs_2a, inf_hs_5a, inf_hs_9a, inf_hs_11a, inf_hs_14a, inf_hs_18a, inf_hs_28a,
+inf_multi_10a, inf_hs_100a,
+st_hs_14a, st_hs_30a, st_hs_50a,
+st_dual_14a, st_hb_30a, st_ls_50a,
+custom
 ```
 
 ### PowerState
@@ -211,13 +211,13 @@ SLEEP, CRANK, ACTIVE, ACCESSORY
 ### DeviceStatus
 
 ```
-NORMAL, WARNING, FAULT, DISABLED
+ok, warning, fault, unknown
 ```
 
 ### ProtectionEvent
 
 ```
-NONE, SCP, I2T, LATCH_OFF, THERMAL_SHUTDOWN, OPEN_LOAD_DIAG, OVER_VOLTAGE
+none, scp, i2t, latch_off, thermal_shutdown, open_load_diag, over_voltage
 ```
 
 ### FaultType

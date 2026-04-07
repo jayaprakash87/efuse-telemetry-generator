@@ -335,18 +335,41 @@ class TelemetryRecord(BaseModel):
 
     timestamp: datetime
     channel_id: str
-    current_a: float = Field(description="Measured current in amps")
-    voltage_v: float = Field(description="Measured voltage in volts")
-    temperature_c: float = Field(description="Junction / board temperature °C")
-    state_on_off: bool = Field(description="Channel power state")
-    trip_flag: bool = Field(default=False, description="Over-current trip active")
-    overload_flag: bool = Field(default=False, description="Overload condition detected")
+    current_a: float = Field(
+        description="Measured load current in amps after ISENSE-chain scaling, quantization, and injected noise"
+    )
+    voltage_v: float = Field(
+        description="Measured channel voltage in volts after bus events, harness drop, and measurement noise"
+    )
+    temperature_c: float = Field(
+        description="Simulated junction temperature in degrees Celsius from the RC thermal model"
+    )
+    state_on_off: bool = Field(
+        description="Effective channel gate state: true when energised, false when off due to sleep, duty-cycle gating, or protection"
+    )
+    trip_flag: bool = Field(
+        default=False,
+        description="True while eFuse protection has tripped the channel or latched it off",
+    )
+    overload_flag: bool = Field(
+        default=False,
+        description="True when the instantaneous current exceeds the nominal operating region",
+    )
     protection_event: ProtectionEvent = Field(
         default=ProtectionEvent.NONE,
-        description="Which protection mechanism fired (SCP, I²t, thermal, latch-off)",
+        description="Specific protection mechanism active for this sample: none, scp, i2t, thermal_shutdown, latch_off, open_load_diag, or over_voltage",
     )
-    reset_counter: int = Field(default=0, ge=0, description="Cumulative reset count")
-    pwm_duty_pct: float = Field(default=100.0, ge=0.0, le=100.0, description="PWM duty %")
+    reset_counter: int = Field(
+        default=0,
+        ge=0,
+        description="Cumulative automatic retry count after protection trips during the current fault window",
+    )
+    pwm_duty_pct: float = Field(
+        default=100.0,
+        ge=0.0,
+        le=100.0,
+        description="Commanded PWM duty-cycle percentage when PWM modulation is modelled",
+    )
     device_status: DeviceStatus = DeviceStatus.OK
 
     @field_serializer("timestamp")
@@ -366,7 +389,12 @@ class EventLabel(BaseModel):
     timestamp: datetime
     channel_id: str
     fault_type: FaultType = FaultType.NONE
-    severity: float = Field(default=0.0, ge=0.0, le=1.0, description="0=nominal, 1=critical")
+    severity: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Fault intensity scaled to 0.0-1.0, where higher values produce stronger waveform deviation",
+    )
     description: str = ""
 
 
@@ -384,12 +412,12 @@ class ChannelMeta(BaseModel):
     channel's eFuse registers via SPI and publishes the measured signals.
     """
 
-    channel_id: str
-    load_name: str = ""
-    nominal_current_a: float = 5.0
-    max_current_a: float = 20.0
-    nominal_voltage_v: float = 13.5
-    fuse_rating_a: float = 15.0
+    channel_id: str = Field(description="Unique logical channel identifier, e.g. 'ch_01'")
+    load_name: str = Field(default="", description="Human-readable load name shown in configs and the dashboard")
+    nominal_current_a: float = Field(default=5.0, description="Expected steady-state load current in amps")
+    max_current_a: float = Field(default=20.0, description="Absolute current ceiling before protection is expected to react")
+    nominal_voltage_v: float = Field(default=13.5, description="Nominal supply voltage seen by the load in volts")
+    fuse_rating_a: float = Field(default=15.0, description="Equivalent fuse or channel current class in amps")
 
     # eFuse type + physical grouping
     efuse_family: EFuseFamily = Field(
@@ -606,11 +634,16 @@ class ChannelMeta(BaseModel):
 class FaultInjection(BaseModel):
     """Specifies a fault to inject during simulation."""
 
-    channel_id: str
-    fault_type: FaultType
-    start_s: float = Field(description="Seconds from scenario start")
-    duration_s: float = Field(default=5.0, description="How long the fault lasts")
-    intensity: float = Field(default=0.7, ge=0.0, le=1.0)
+    channel_id: str = Field(description="Target channel receiving the injected fault")
+    fault_type: FaultType = Field(description="Fault waveform category to inject")
+    start_s: float = Field(description="Seconds from scenario start at which the fault begins")
+    duration_s: float = Field(default=5.0, description="Fault duration in seconds")
+    intensity: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Fault severity multiplier from 0.0 to 1.0",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -628,16 +661,16 @@ class DerivedFeatures(BaseModel):
 
     timestamp: datetime
     channel_id: str
-    rolling_rms_current: float = 0.0
-    rolling_mean_current: float = 0.0
-    rolling_max_current: float = 0.0
-    rolling_min_current: float = 0.0
-    temperature_slope: float = 0.0
-    spike_score: float = 0.0
-    anomaly_score: float = 0.0
-    trip_frequency: float = 0.0
-    recovery_time_s: float = 0.0
-    degradation_trend: float = 0.0
+    rolling_rms_current: float = Field(default=0.0, description="Rolling root-mean-square current over the configured feature window")
+    rolling_mean_current: float = Field(default=0.0, description="Rolling mean current over the configured feature window")
+    rolling_max_current: float = Field(default=0.0, description="Rolling maximum current over the configured feature window")
+    rolling_min_current: float = Field(default=0.0, description="Rolling minimum current over the configured feature window")
+    temperature_slope: float = Field(default=0.0, description="Finite-difference temperature change rate across the active window")
+    spike_score: float = Field(default=0.0, description="Standard-deviation-normalized positive current excursion above baseline")
+    anomaly_score: float = Field(default=0.0, description="Reserved field for downstream anomaly scoring pipelines")
+    trip_frequency: float = Field(default=0.0, description="Rolling count of trip-flag rising edges")
+    recovery_time_s: float = Field(default=0.0, description="Elapsed seconds since the most recent trip recovery")
+    degradation_trend: float = Field(default=0.0, description="Long-window slope of rolling mean current used as an aging indicator")
 
 
 # ---------------------------------------------------------------------------
