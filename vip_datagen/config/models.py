@@ -203,6 +203,11 @@ def load_config(path: str | Path) -> PlatformConfig:
     path = Path(path)
     with open(path) as f:
         raw = yaml.safe_load(f)
+    return load_config_data(raw)
+
+
+def load_config_data(raw: dict) -> PlatformConfig:
+    """Validate config data from an in-memory mapping and resolve topology."""
     cfg = PlatformConfig.model_validate(raw)
     _resolve_topology(cfg)
     return cfg

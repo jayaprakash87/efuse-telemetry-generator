@@ -46,13 +46,11 @@ dependencies = [
     "rich>=13.0",
 ]
 
-# Replace these placeholder URLs with the final public repository paths before
-# the first external release if you publish under a different org/user.
 [project.urls]
-Homepage = "https://github.com/your-org/vip-data-generator"
-Documentation = "https://github.com/your-org/vip-data-generator/tree/main/docs"
-Repository = "https://github.com/your-org/vip-data-generator"
-Issues = "https://github.com/your-org/vip-data-generator/issues"
+Homepage = "https://github.com/jayaprakash87/vip-data-generator"
+Documentation = "https://github.com/jayaprakash87/vip-data-generator/tree/main/docs"
+Repository = "https://github.com/jayaprakash87/vip-data-generator"
+Issues = "https://github.com/jayaprakash87/vip-data-generator/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -67,10 +65,14 @@ dashboard = [
 
 [project.scripts]
 vip-gen = "vip_datagen.cli:app"
+vip-dashboard = "vip_datagen.dashboard_launcher:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["vip_datagen*"]
+
+[tool.setuptools.package-data]
+vip_datagen = ["config/templates/*.yaml"]
 
 [tool.ruff]
 line-length = 100

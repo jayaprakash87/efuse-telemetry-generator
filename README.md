@@ -4,6 +4,8 @@ Synthetic eFuse telemetry generator for Battery Electric Vehicle (BEV) Zone Cont
 
 Supports single-cycle quick runs and **month-long multi-cycle drive simulations** with stochastic fault injection, progressive aging, and realistic daily driving patterns.
 
+The package is distributed as a **full runtime package**: library, CLI, built-in sample configs, and dashboard launcher.
+
 > **Documentation:** See [`docs/`](docs/) for architecture deep-dive, data model reference, configuration guide, and onboarding materials.
 
 ## What It Generates
@@ -71,7 +73,7 @@ Generate month-long datasets with realistic driving patterns:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"            # generator + tests
-pip install -e ".[dev,dashboard]"  # includes Streamlit dashboard
+pip install -e ".[dev,dashboard]"  # includes packaged Streamlit dashboard
 ```
 
 Requires Python ≥ 3.10.
@@ -84,24 +86,30 @@ Requires Python ≥ 3.10.
 # Default 3-channel mixed-fault demo (60 s)
 vip-gen
 
+# List packaged configs
+vip-gen --list-configs
+
 # 65-channel full ZC topology (300 s, 21 fault injections)
-vip-gen --config configs/zone_controller_full.yaml
+vip-gen --config zone_controller_full
 
 # Override duration and seed
-vip-gen --config configs/default.yaml --duration 120 --seed 99
+vip-gen --config default --duration 120 --seed 99
 
 # CSV output
-vip-gen --config configs/default.yaml --format csv
+vip-gen --config default --format csv
+
+# Filesystem paths still work too
+vip-gen --config ./my-custom-scenario.yaml
 ```
 
 ### Multi-Cycle Mode
 
 ```bash
 # 30-day mixed driving profile (~55 cycles, ~37 h driving, ~8.6 M rows)
-vip-gen --config configs/one_month.yaml
+vip-gen --config one_month
 ```
 
-Multi-cycle mode is auto-detected when the config has `drive_cycle.enabled: true`. The CLI shows a Rich progress bar during generation.
+Multi-cycle mode is auto-detected when the config has `drive_cycle.enabled: true`. The CLI accepts either a filesystem path or a packaged config name (`default`, `zone_controller_full`, `one_month`, `stress_test`).
 
 ### Common Options
 
@@ -128,9 +136,17 @@ Interactive Streamlit dashboard for exploring generated data.
 
 ```bash
 pip install -e ".[dashboard]"
-streamlit run dashboard/app.py
-# Opens at http://localhost:8501
+vip-dashboard
+# Opens at http://localhost:8501 and reads ./output by default
 ```
+
+Alternative repo-local launch:
+
+```bash
+streamlit run dashboard/app.py
+```
+
+The dashboard reads `output/` from the current working directory by default. Set `VIP_DATA_GENERATOR_OUTPUT_DIR=/path/to/output` to point it elsewhere.
 
 | Tab | Contents |
 |-----|----------|
@@ -143,14 +159,14 @@ streamlit run dashboard/app.py
 
 **Sidebar:** Run selector, zone filter (from channel manifest), day filter (multi-cycle), channel multi-select with load name labels. Limits display to 8 channels for performance.
 
-## Scenario Configs
+## Built-In Configs
 
 | Config | Description |
 |--------|-------------|
-| [`configs/default.yaml`](configs/default.yaml) | 3-channel mixed-fault demo (60 s) |
-| [`configs/zone_controller_full.yaml`](configs/zone_controller_full.yaml) | 65-channel 4-zone topology, 300 s, 21 fault injections |
-| [`configs/one_month.yaml`](configs/one_month.yaml) | 30-day multi-cycle simulation (~8.6 M rows) |
-| [`configs/stress_test.yaml`](configs/stress_test.yaml) | All fault types on a single channel (120 s) |
+| [`default`](vip_datagen/config/templates/default.yaml) | 3-channel mixed-fault demo (60 s) |
+| [`zone_controller_full`](vip_datagen/config/templates/zone_controller_full.yaml) | 65-channel 4-zone topology, 300 s, 21 fault injections |
+| [`one_month`](vip_datagen/config/templates/one_month.yaml) | 30-day multi-cycle simulation (~8.6 M rows) |
+| [`stress_test`](vip_datagen/config/templates/stress_test.yaml) | All fault types on a single channel (120 s) |
 
 ## Project Structure
 
@@ -159,7 +175,11 @@ vip_datagen/
 ├── schemas/telemetry.py      # Pydantic data models (ChannelMeta, EFuseProfile, FaultInjection, …)
 ├── config/
 │   ├── models.py             # SimulationConfig, DriveCycleConfig, FaultRateConfig, FeatureConfig
-│   └── catalog.py            # eFuse IC catalog (19 families) + 65-channel BEV topology factory
+│   ├── catalog.py            # eFuse IC catalog (19 families) + 65-channel BEV topology factory
+│   ├── builtin.py            # Built-in config loader and registry
+│   └── templates/*.yaml      # Canonical packaged scenario configs
+├── dashboard_app.py          # Packaged Streamlit dashboard app
+├── dashboard_launcher.py     # vip-dashboard entry point
 ├── simulation/
 │   ├── generator.py          # TelemetryGenerator — signal synthesis, fault waveforms, protection
 │   └── drive_cycles.py       # DriveCyclePlanner — schedule, fault distribution, multi-cycle orchestration
@@ -168,8 +188,7 @@ vip_datagen/
 ├── cli.py                    # Typer CLI entry point
 └── utils/logging.py          # Logging configuration
 dashboard/
-└── app.py                    # Streamlit 6-tab dashboard
-configs/                      # YAML scenario configs
+└── app.py                    # Repo compatibility wrapper for the packaged dashboard
 docs/                         # Architecture, data model, configuration, and onboarding docs
 tests/                        # 31 pytest tests
 examples/

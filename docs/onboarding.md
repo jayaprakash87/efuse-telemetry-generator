@@ -27,7 +27,7 @@ It generates realistic current, voltage, and temperature signals for up to 65 eF
 ### 1. Clone & Install
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/jayaprakash87/vip-data-generator.git
 cd vip-data-generator
 python3 -m venv .venv
 source .venv/bin/activate
@@ -37,7 +37,7 @@ pip install -e ".[dev,dashboard]"
 ### 2. Run the Demo
 
 ```bash
-vip-gen --config configs/default.yaml
+vip-gen --config default
 ```
 
 This generates a 3-channel, 60-second dataset in `output/<run_id>/`. Takes under 2 seconds.
@@ -53,7 +53,7 @@ Select the run from the sidebar. Walk through each tab: Overview → Telemetry �
 ### 4. Run the Full Topology
 
 ```bash
-vip-gen --config configs/zone_controller_full.yaml
+vip-gen --config zone_controller_full
 ```
 
 65 channels, 4 zones, 300 seconds, 21 fault injections. ~195K rows, takes ~10 seconds.
@@ -61,7 +61,7 @@ vip-gen --config configs/zone_controller_full.yaml
 ### 5. Generate a Month of Data
 
 ```bash
-vip-gen --config configs/one_month.yaml
+vip-gen --config one_month
 ```
 
 30-day multi-cycle simulation. ~55 drive cycles, ~37 hours of driving, ~8.6M rows. Takes ~2 minutes.
@@ -136,8 +136,8 @@ See [drive-cycles.md](drive-cycles.md) for the full deep-dive.
 | [`vip_datagen/features/engine.py`](../vip_datagen/features/engine.py) | Feature computation. Read `compute()` — one method, 20+ features. |
 | [`vip_datagen/storage/writer.py`](../vip_datagen/storage/writer.py) | Output layer. Straightforward Parquet/CSV writes. |
 | [`vip_datagen/cli.py`](../vip_datagen/cli.py) | CLI orchestration. Single-cycle vs multi-cycle branching logic. |
-| [`dashboard/app.py`](../dashboard/app.py) | Streamlit UI. 6 tabs, each is a self-contained rendering function. |
-| [`configs/one_month.yaml`](../configs/one_month.yaml) | Best example of full multi-cycle config. Read the comments. |
+| [`vip_datagen/dashboard_app.py`](../vip_datagen/dashboard_app.py) | Packaged Streamlit UI. [`dashboard/app.py`](../dashboard/app.py) is only a compatibility wrapper. |
+| [`vip_datagen/config/templates/one_month.yaml`](../vip_datagen/config/templates/one_month.yaml) | Best example of full multi-cycle config. Read the comments. |
 | [`tests/test_simulation.py`](../tests/test_simulation.py) | Test patterns — good examples of how to call the generator programmatically. |
 
 **Suggested reading order:** `telemetry.py` → `catalog.py` → `models.py` → `generator.py` → `cli.py` → run the demo → read the dashboard code.

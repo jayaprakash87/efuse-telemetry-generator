@@ -2,10 +2,10 @@
 
 Example usage:
     vip-gen
-    vip-gen --config configs/zone_controller_full.yaml
-    vip-gen --config configs/one_month.yaml
-    vip-gen --config configs/default.yaml --output my_run/ --format csv
-    vip-gen --config configs/default.yaml --duration 120 --seed 99
+    vip-gen --config zone_controller_full
+    vip-gen --config one_month
+    vip-gen --config default --output my_run/ --format csv
+    vip-gen --config default --duration 120 --seed 99
 
 The generator produces:
     <output>/<run_id>/telemetry.parquet         raw per-sample eFuse signals
@@ -27,6 +27,7 @@ import typer
 import yaml
 from rich.console import Console
 
+from vip_datagen.config.builtin import list_bundled_configs, load_bundled_config
 from vip_datagen.config.models import (
     FeatureConfig,
     SimulationConfig,
@@ -50,13 +51,16 @@ console = Console()
 @app.callback(invoke_without_command=True)
 def generate(
     ctx: typer.Context,
-    config: Optional[Path] = typer.Option(
+    config: Optional[str] = typer.Option(
         None,
         "--config",
         "-c",
-        help="Path to YAML scenario config. Defaults to built-in 3-channel demo.",
-        exists=True,
-        dir_okay=False,
+        help="Path to YAML scenario config, or a built-in config name such as default or one_month.",
+    ),
+    list_configs: bool = typer.Option(
+        False,
+        "--list-configs",
+        help="List the built-in packaged scenario configs and exit.",
     ),
     output: Path = typer.Option(
         Path("output"),
@@ -91,6 +95,13 @@ def generate(
     """Generate synthetic eFuse telemetry, features, and fault labels."""
     if ctx.invoked_subcommand is not None:
         return
+
+    if list_configs:
+        console.print("Built-in configs:")
+        for key, filename in list_bundled_configs().items():
+            console.print(f"  [cyan]{key}[/cyan]  ({filename})")
+        return
+
     configure_logging(json_format=json_log)
     log = get_logger(__name__)
 
@@ -99,15 +110,10 @@ def generate(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Load config
-    if config is not None:
-        platform_cfg = load_config(config)
-        sim_cfg: SimulationConfig = platform_cfg.simulation
-        feat_cfg: FeatureConfig = platform_cfg.features
-        store_cfg: StorageConfig = platform_cfg.storage
-    else:
-        sim_cfg = SimulationConfig()
-        feat_cfg = FeatureConfig()
-        store_cfg = StorageConfig(output_dir=str(output))
+    platform_cfg = _load_requested_config(config)
+    sim_cfg: SimulationConfig = platform_cfg.simulation
+    feat_cfg: FeatureConfig = platform_cfg.features
+    store_cfg: StorageConfig = platform_cfg.storage
 
     # CLI overrides
     if duration is not None:
@@ -247,6 +253,26 @@ def _short_id(length: int = 6) -> str:
     import random
     import string
     return "".join(random.choices(string.ascii_lowercase + string.digits, k=length))
+
+
+def _load_requested_config(config: str | None) -> PlatformConfig:
+    """Load either a filesystem config or one of the packaged built-in configs."""
+    if config is None:
+        return load_bundled_config("default")
+
+    candidate = Path(config).expanduser()
+    if candidate.exists():
+        return load_config(candidate)
+
+    config_key = Path(config).stem
+    bundled = list_bundled_configs()
+    if config_key in bundled:
+        return load_bundled_config(config_key)
+
+    choices = ", ".join(bundled)
+    raise typer.BadParameter(
+        f"Config '{config}' not found. Use a filesystem path or one of: {choices}."
+    )
 
 
 def main() -> None:

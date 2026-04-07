@@ -16,7 +16,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from vip_datagen.config.models import FeatureConfig, SimulationConfig, StorageConfig, load_config
+from vip_datagen.config.builtin import load_bundled_config
+from vip_datagen.config.models import StorageConfig
 from vip_datagen.features.engine import FeatureEngine
 from vip_datagen.simulation.generator import TelemetryGenerator
 from vip_datagen.storage.writer import StorageWriter
@@ -24,15 +25,9 @@ from vip_datagen.storage.writer import StorageWriter
 # --------------------------------------------------------------------------
 # 1. Load a scenario (or use the programmatic API)
 # --------------------------------------------------------------------------
-cfg_path = Path(__file__).parent.parent / "configs" / "default.yaml"
-if cfg_path.exists():
-    platform = load_config(cfg_path)
-    sim_cfg = platform.simulation
-    feat_cfg = platform.features
-else:
-    # Fallback: pure-Python config — no YAML needed
-    sim_cfg = SimulationConfig(duration_s=60.0, sample_interval_ms=100.0, seed=42)
-    feat_cfg = FeatureConfig()
+platform = load_bundled_config("default")
+sim_cfg = platform.simulation
+feat_cfg = platform.features
 
 print(f"Scenario : {sim_cfg.name}")
 print(f"Channels : {len(sim_cfg.channels)}")
