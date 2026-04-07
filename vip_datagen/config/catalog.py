@@ -517,6 +517,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "seat_heater_rear_right",
         load_type="ptc",
         pwm_capable=True,
+        # PTC thermostat cycles: ~40 s ON / ~30 s OFF at setpoint → duty ~57 %
+        on_duration_s=40.0,
+        off_duration_s=30.0,
         system_cluster="body_comfort",
         system_name="seat_heating",
     )
@@ -526,6 +529,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "seat_heater_rear_left",
         load_type="ptc",
         pwm_capable=True,
+        on_duration_s=40.0,
+        off_duration_s=30.0,
         system_cluster="body_comfort",
         system_name="seat_heating",
     )
@@ -536,6 +541,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         load_type="motor",
         inrush_factor=3.0,
         inrush_duration_ms=40.0,
+        # Ventilation typically used ~30 % of occupied drive time
+        duty_cycle=0.30,
         system_cluster="body_comfort",
         system_name="seat_ventilation",
     )
@@ -545,6 +552,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "seatbelt_heater_rear",
         load_type="ptc",
         pwm_capable=True,
+        on_duration_s=30.0,
+        off_duration_s=20.0,
         system_cluster="body_comfort",
         system_name="heated_surfaces",
     )
@@ -612,10 +621,13 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_name="climate_support",
     )
     # Audio
+    # Audio amps: powered when audio system is on; draw varies with volume.
+    # Modelled as ~70 % duty (music playing most of trip, not always at full load)
     _add(
         "zone_rear",
         "inf_hs_14a",
         "amplifier_main",
+        duty_cycle=0.70,
         system_cluster="infotainment",
         system_name="audio_system",
     )
@@ -623,6 +635,7 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "zone_rear",
         "inf_hs_14a",
         "amplifier_subwoofer",
+        duty_cycle=0.70,
         system_cluster="infotainment",
         system_name="audio_system",
     )
@@ -634,10 +647,12 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="energy_management",
         system_name="charging",
     )
+    # Aux outlets: intermittently used — ~40 % duty (device charging)
     _add(
         "zone_rear",
         "inf_hs_5a",
         "power_outlet_rear",
+        duty_cycle=0.40,
         system_cluster="energy_management",
         system_name="auxiliary_power",
     )
@@ -645,6 +660,7 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "zone_rear",
         "inf_hs_5a",
         "socket_12v_rear",
+        duty_cycle=0.40,
         system_cluster="energy_management",
         system_name="auxiliary_power",
     )
@@ -663,6 +679,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         load_type="motor",
         inrush_factor=5.0,
         inrush_duration_ms=80.0,
+        # Step deploys for ~2 s at entry/exit — very low duty cycle over a 5-min trip
+        on_duration_s=2.0,
+        off_duration_s=90.0,
         system_cluster="body_comfort",
         system_name="convenience_actuators",
         driver_type="h_bridge",
@@ -671,40 +690,62 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "zone_rear",
         "inf_hs_14a",
         "rear_steer_actuator",
+        # Active steering continuously adjusts during cornering; modelled as ~60 % duty
+        duty_cycle=0.60,
         system_cluster="drivetrain",
         system_name="rear_axle_steering",
     )
     # ADAS
+    # Corner radars (77 GHz, e.g. Bosch MRR1Plus) draw 1–3 W via internal regulation;
+    # from the eFuse perspective they are constant-power resistive loads — NOT capacitive.
+    # They have soft-start internally, so no special inrush model is needed.
     _add(
         "zone_rear",
         "inf_hs_2a",
         "corner_radar_rear_left",
-        load_type="capacitive",
+        load_type="resistive",  # constant-power resistive; internal regulation
         system_cluster="adas",
         system_name="surround_sensing",
+        power_class="always_on",  # ADAS sensing active even at low KL30 power
+        duty_cycle=1.0,  # continuously powered when ignition on
     )
     _add(
         "zone_rear",
         "inf_hs_2a",
         "corner_radar_rear_right",
-        load_type="capacitive",
+        load_type="resistive",
         system_cluster="adas",
         system_name="surround_sensing",
+        power_class="always_on",
+        duty_cycle=1.0,
     )
-    # Occupant safety
+    # Occupant safety — pyrotechnic squib continuity monitor
+    # Belt pretensioners are pyrotechnic squib loads driven by dedicated airbag ECU
+    # squib driver ICs (e.g. TLE4490). At the eFuse level the channel carries only
+    # a diagnostic continuity current (~1–5 mA). duty_cycle=0 means no active load
+    # current; nominal_current_a is set to near-zero to model the continuity check.
+    # The eFuse IC monitors for open-circuit (wire break) via the DIAGNOSIS cycle.
     _add(
         "zone_rear",
-        "inf_hs_5a",
-        "belt_pretensioner_left",
+        "inf_hs_2a",  # small IC sufficient for µA diagnostic leakage
+        "squib_monitor_left",  # renamed: this is a continuity monitor, not a driver
+        load_type="resistive",
+        nominal_current_a=0.003,  # 3 mA continuity diagnostic current
+        duty_cycle=0.0,  # no active load; only DIAGNOSIS cycle leakage
         system_cluster="occupant_safety",
         system_name="restraint_systems",
+        power_class="always_on",  # monitored even in SLEEP
     )
     _add(
         "zone_rear",
-        "inf_hs_5a",
-        "belt_pretensioner_right",
+        "inf_hs_2a",
+        "squib_monitor_right",
+        load_type="resistive",
+        nominal_current_a=0.003,
+        duty_cycle=0.0,
         system_cluster="occupant_safety",
         system_name="restraint_systems",
+        power_class="always_on",
     )
     # Suspension
     _add(
@@ -717,6 +758,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
 
     # ── Body zone (15 channels) ──────────────────────────────────
     # Door modules
+    # Door locks: H-bridge motor, 400 ms actuation per lock/unlock event.
+    # In a 5-min scenario expect 1–2 events per door → on_duration ~0.4 s, off ~120 s
     _add(
         "zone_body",
         "inf_hs_11a",
@@ -724,6 +767,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         load_type="motor",
         inrush_factor=4.0,
         inrush_duration_ms=40.0,
+        on_duration_s=0.4,
+        off_duration_s=120.0,
         system_cluster="body_comfort",
         system_name="door_modules",
         driver_type="h_bridge",
@@ -735,6 +780,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         load_type="motor",
         inrush_factor=4.0,
         inrush_duration_ms=40.0,
+        on_duration_s=0.4,
+        off_duration_s=120.0,
         system_cluster="body_comfort",
         system_name="door_modules",
         driver_type="h_bridge",
@@ -746,6 +793,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         load_type="motor",
         inrush_factor=4.0,
         inrush_duration_ms=40.0,
+        on_duration_s=0.4,
+        off_duration_s=120.0,
         system_cluster="body_comfort",
         system_name="door_modules",
         driver_type="h_bridge",
@@ -757,6 +806,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         load_type="motor",
         inrush_factor=4.0,
         inrush_duration_ms=40.0,
+        on_duration_s=0.4,
+        off_duration_s=120.0,
         system_cluster="body_comfort",
         system_name="door_modules",
         driver_type="h_bridge",
@@ -809,12 +860,15 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="body_comfort",
         system_name="cabin_climate",
     )
+    # PTC cabin heater thermostat cycles: ~50 s ON / ~40 s OFF at setpoint
     _add(
         "zone_body",
         "inf_hs_18a",
         "ptc_cabin_heater",
         load_type="ptc",
         pwm_capable=True,
+        on_duration_s=50.0,
+        off_duration_s=40.0,
         system_cluster="body_comfort",
         system_name="cabin_climate",
     )
@@ -826,12 +880,15 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_name="cabin_climate",
     )
     # Body electronics
+    # Steering column heater: thermostat-cycled, ~35 s ON / 25 s OFF
     _add(
         "zone_body",
         "inf_hs_5a",
         "steering_column_heater",
         load_type="ptc",
         pwm_capable=True,
+        on_duration_s=35.0,
+        off_duration_s=25.0,
         system_cluster="body_comfort",
         system_name="heated_surfaces",
     )
@@ -918,10 +975,12 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_name="active_suspension",
     )
     # Seat comfort (front)
+    # Massage seats: occupant-activated, ~25 % duty (used occasionally)
     _add(
         "zone_front",
         "st_dual_14a",
         "massage_seat_left",
+        duty_cycle=0.25,
         system_cluster="body_comfort",
         system_name="seat_comfort",
     )
@@ -929,6 +988,7 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "zone_front",
         "st_dual_14a",
         "massage_seat_right",
+        duty_cycle=0.25,
         system_cluster="body_comfort",
         system_name="seat_comfort",
     )

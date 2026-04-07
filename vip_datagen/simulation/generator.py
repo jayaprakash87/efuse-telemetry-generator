@@ -215,18 +215,35 @@ class TelemetryGenerator:
     # ------------------------------------------------------------------
 
     def _generate_bus_voltage(self, n: int, interval_s: float) -> np.ndarray:
-        """Generate a shared bus voltage with alternator ripple and minor sag events.
+        """Generate a shared bus voltage representative of CAN-sampled data.
 
-        Models: 13.5V nominal + 100mV alternator ripple at ~50Hz equivalent
-        plus slow drift from battery charge state.
+        At 100 ms sample intervals (10 Hz Nyquist = 5 Hz), the 50 Hz alternator
+        ripple present on the real 12V bus is completely above Nyquist and would
+        only appear as aliased low-frequency noise — misleading to any expert
+        inspecting the data.  Instead we model only the frequency components that
+        are physically meaningful at this sample rate:
+
+          1. Slow battery state-of-charge drift (0.05–0.3 Hz) — measurable on CAN
+          2. Minor load-variation ripple (0.1–0.5 Hz) — large loads switching on/off
+          3. White measurement noise (σ = 20 mV) — ADC + harness noise floor
+
+        The result is a realistic 12–14.4 V bus trace without aliasing artefacts.
+        Callers that need to overlay fast events (load dump, cold crank) do so
+        directly in the fault injection layer.
         """
         t = np.arange(n) * interval_s
-        # Alternator ripple (rectified AC, ~50 Hz aliased to sample rate)
-        ripple_freq = 50.0  # Hz — 6-cylinder engine at ~1000 RPM
-        ripple = 0.1 * np.sin(2 * np.pi * ripple_freq * t)
-        # Slow battery charge drift
-        drift = 0.2 * np.sin(2 * np.pi * t / max(t[-1], 1.0) * 0.3)
-        bus = 13.5 + ripple + drift + self.rng.normal(0, 0.02, n)
+        total_s = max(t[-1], 1.0)
+
+        # Slow SoC drift: 0.2 V sinusoidal over the full run window
+        soc_drift = 0.2 * np.sin(2 * np.pi * t / total_s * 0.5)
+
+        # Load-variation ripple: ~0.3 Hz, 80 mV peak
+        load_ripple = 0.08 * np.sin(2 * np.pi * 0.3 * t + self.rng.uniform(0, 2 * np.pi))
+
+        # White ADC / harness noise
+        noise = self.rng.normal(0, 0.02, n)
+
+        bus = 13.5 + soc_drift + load_ripple + noise
         return bus
 
     # ------------------------------------------------------------------
@@ -605,6 +622,54 @@ class TelemetryGenerator:
 
             prev_state = ps
 
+        # --- Apply duty-cycle / activity gating ---
+        # Channels with duty_cycle < 1.0 or explicit on/off burst durations are
+        # gated to zero during their off periods, modelling event-driven loads
+        # (door locks, actuators) and thermostat-cycled loads (seat heaters).
+        # The power-state mask applied above already zeros out un-powered samples;
+        # duty-cycle gating only operates on samples that are still "on".
+        if ch.on_duration_s > 0 and ch.off_duration_s > 0:
+            # Explicit square-wave burst pattern: on_duration_s ON, off_duration_s OFF
+            period_s = ch.on_duration_s + ch.off_duration_s
+            period_samples = max(int(period_s / interval_s), 2)
+            on_samples = max(int(ch.on_duration_s / interval_s), 1)
+            # Phase offset: randomise start within period so all channels don't switch together
+            phase = int(self.rng.uniform(0, period_samples))
+            activity_mask = np.zeros(n, dtype=bool)
+            for start in range(-phase, n, period_samples):
+                seg_start = max(start, 0)
+                seg_end = min(start + on_samples, n)
+                if seg_end > seg_start:
+                    activity_mask[seg_start:seg_end] = True
+            # At every rising edge of activity_mask apply inrush
+            edges = np.diff(activity_mask.astype(int), prepend=0)
+            for edge_i in np.where(edges == 1)[0]:
+                inrush_samp = max(int(ch.inrush_duration_ms / 1000 / interval_s), 1) if ch.inrush_duration_ms > 0 else max(int(0.050 / interval_s), 1)
+                end_ir = min(edge_i + inrush_samp, n)
+                decay = np.exp(-3 * np.arange(end_ir - edge_i) / max(end_ir - edge_i, 1))
+                inrush_factor = ch.inrush_factor if ch.inrush_factor > 1.0 else (5.0 if ch.load_type == "motor" else 2.0)
+                current[edge_i:end_ir] = ch.nominal_current_a * (1.0 + (inrush_factor - 1.0) * decay) + self._composite_noise(end_ir - edge_i, ch)
+            # Zero out off periods
+            off_mask = ~activity_mask
+            current[off_mask] = self.rng.normal(0.00005, 0.00002, int(off_mask.sum()))
+            state[off_mask] = False
+        elif ch.duty_cycle < 1.0:
+            # Probabilistic duty-cycle: build random on/off blocks so gating is
+            # contiguous (realistic burst lengths) rather than per-sample coin flips.
+            # Minimum block length: 0.5 s so loads don't flicker unrealistically.
+            min_block = max(int(0.5 / interval_s), 1)
+            i_dc = 0
+            while i_dc < n:
+                # Decide whether this block is on or off
+                block_on = self.rng.random() < ch.duty_cycle
+                # Block length: exponential random variable, mean = 2 s
+                block_len = max(int(self.rng.exponential(2.0) / interval_s), min_block)
+                block_end = min(i_dc + block_len, n)
+                if not block_on:
+                    current[i_dc:block_end] = self.rng.normal(0.00005, 0.00002, block_end - i_dc)
+                    state[i_dc:block_end] = False
+                i_dc = block_end
+
         # --- Apply fault injections with realistic waveforms ---
         for fi in faults:
             start_idx = int(fi.start_s / interval_s)
@@ -612,6 +677,12 @@ class TelemetryGenerator:
             n_fault = end_idx - start_idx
             if n_fault <= 0:
                 continue
+
+            # Guard: skip fault if channel is unpowered at the fault start sample.
+            # (e.g. fault at t=10s but channel is IGNITION and vehicle is in SLEEP)
+            if not state[start_idx]:
+                continue
+
             sl = slice(start_idx, end_idx)
 
             match fi.fault_type:

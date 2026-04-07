@@ -552,6 +552,39 @@ class ChannelMeta(BaseModel):
         description="Fraction of each co-die channel's steady-state ΔT injected into this channel (typ. 0.10–0.25)",
     )
 
+    # --- Activity / duty-cycle model ---
+    # Many eFuse channels are event-driven, not continuously loaded.
+    # Examples: door locks pulse for ~400 ms per actuation; seat heaters cycle
+    # under PTC thermostat control; amplifiers vary with occupant use.
+    #
+    # Two complementary parameters control this:
+    #   duty_cycle   — fraction of ACTIVE time the load is drawing current (0–1).
+    #                  When < 1.0, the generator randomly gates the load off for
+    #                  proportional stretches. Default 1.0 = always on.
+    #   on_duration_s / off_duration_s — explicit on/off cycle times (s).
+    #                  When both > 0, overrides duty_cycle with a square-wave
+    #                  bursting pattern (inrush applied at every turn-on edge).
+    #                  Default 0.0 = use duty_cycle mode instead.
+    #
+    # "Squib / pyrotechnic" channels (belt pretensioners, air-bag) should use
+    #   duty_cycle=0.0 and nominal_current_a ≈ 0 (only leakage / continuity).
+    duty_cycle: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+        description="Fraction of powered time the channel is actively drawing load current (1.0 = always on)",
+    )
+    on_duration_s: float = Field(
+        default=0.0,
+        ge=0.0,
+        description="Explicit on-burst duration in seconds. 0 = use duty_cycle mode.",
+    )
+    off_duration_s: float = Field(
+        default=0.0,
+        ge=0.0,
+        description="Explicit off-pause duration in seconds. 0 = use duty_cycle mode.",
+    )
+
     # --- Sleep / wake behaviour ---
     # During SLEEP the eFuse gate is OFF for IGNITION/ACCESSORY/START channels.
     # ALWAYS_ON (KL30) channels remain gated ON but draw only the standby
