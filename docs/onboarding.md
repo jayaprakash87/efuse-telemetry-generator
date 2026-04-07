@@ -45,10 +45,10 @@ This generates a 3-channel, 60-second dataset in `output/<run_id>/`. Takes under
 ### 3. Explore the Output
 
 ```bash
-streamlit run dashboard/app.py
+efuse-dashboard
 ```
 
-Select the run from the sidebar. Walk through each tab: Overview → Telemetry → Features → Fault Analysis → Protection Events → Config.
+Select the run from the sidebar. Walk through each tab: Overview → Signals → Features → Fault & Protection → Config.
 
 ### 4. Run the Full Topology
 
@@ -66,7 +66,17 @@ efuse-gen --config one_month
 
 30-day multi-cycle simulation. ~55 drive cycles, ~37 hours of driving, ~8.6M rows. Takes ~2 minutes.
 
-### 6. Run Tests
+### 6. Ingest Real Measurement Data
+
+```bash
+efuse-ingest bench_recording.csv \
+  --map "I_ch01=current_a,U_bat=voltage_v,T_junc=temperature_c" \
+  --channel ch_001
+```
+
+This creates a standard run directory from your bench CSV. The dashboard shows it alongside synthetic runs with a 🔬 Bench Recording badge.
+
+### 7. Run Tests
 
 ```bash
 pytest -v

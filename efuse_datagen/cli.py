@@ -275,8 +275,102 @@ def _load_requested_config(config: str | None) -> PlatformConfig:
     )
 
 
+# ---------------------------------------------------------------------------
+# efuse-ingest sub-command
+# ---------------------------------------------------------------------------
+
+ingest_app = typer.Typer(
+    name="efuse-ingest",
+    help="Ingest real measurement data (CSV / Parquet / MDF / BLF) into the standard eFuse run format.",
+    add_completion=False,
+)
+
+
+@ingest_app.command()
+def ingest(
+    source: Path = typer.Argument(..., help="Path to a measurement file or directory of files."),
+    output: Path = typer.Option(
+        Path("output"),
+        "--output", "-o",
+        help="Root directory for ingested runs.",
+    ),
+    column_map: Optional[str] = typer.Option(
+        None,
+        "--map", "-m",
+        help="Column mapping as key=value pairs, e.g. 'I_ch01=current_a,U_bat=voltage_v,T_junc=temperature_c'.",
+    ),
+    time_column: str = typer.Option(
+        "timestamp",
+        "--time-col",
+        help="Name of the timestamp column in the source file.",
+    ),
+    channel_id: Optional[str] = typer.Option(
+        None,
+        "--channel",
+        help="Override channel_id (default: derive from filename).",
+    ),
+    glob_pattern: str = typer.Option(
+        "*.csv",
+        "--glob",
+        help="Glob pattern when source is a directory.",
+    ),
+    data_source_tag: str = typer.Option(
+        "bench",
+        "--source-tag",
+        help="Data source tag: bench, hil, or production.",
+    ),
+) -> None:
+    """Ingest measurement data into the standard run format."""
+    from datetime import datetime
+
+    from efuse_datagen.ingestion import MeasurementAdapter, save_as_run
+
+    configure_logging(json_format=False)
+
+    # Parse column map
+    cmap: dict[str, str] = {}
+    if column_map:
+        for pair in column_map.split(","):
+            pair = pair.strip()
+            if "=" in pair:
+                k, v = pair.split("=", 1)
+                cmap[k.strip()] = v.strip()
+
+    adapter = MeasurementAdapter(
+        column_map=cmap,
+        time_column=time_column,
+        default_channel_id=channel_id or "ch_001",
+    )
+
+    source = source.expanduser()
+    if source.is_dir():
+        tel_df = adapter.load_directory(source, glob_pattern=glob_pattern)
+    else:
+        tel_df = adapter.load(source, channel_id=channel_id)
+
+    run_id = datetime.now().strftime("%Y%m%d-%H%M%S-") + _short_id()
+    run_dir = output / run_id
+
+    save_as_run(
+        telemetry_df=tel_df,
+        output_dir=run_dir,
+        data_source=data_source_tag,
+    )
+
+    console.rule("[bold green]Ingestion complete")
+    console.print(f"  Samples  : {len(tel_df):,}")
+    console.print(f"  Channels : {tel_df['channel_id'].nunique()}")
+    console.print(f"  Source   : {data_source_tag}")
+    console.print(f"  Output   : {run_dir}/")
+    console.print()
+
+
 def main() -> None:
     app()
+
+
+def ingest_main() -> None:
+    ingest_app()
 
 
 if __name__ == "__main__":

@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Measurement ingestion adapter** (`efuse_datagen/ingestion/`) — load real bench, HIL,
+  or production recordings (CSV, Parquet, MDF/MF4, BLF/ASC) into the standard telemetry
+  schema via `MeasurementAdapter` with configurable column mapping.
+- **`efuse-ingest` CLI** — one-command ingestion from file or directory with `--map`,
+  `--channel`, `--source-tag` options. New `efuse-ingest` entry point in pyproject.toml.
+- **`save_as_run()`** — persist ingested data in the standard run directory format so the
+  dashboard and all analysis tools work identically on real data.
+- **Data source detection** — `DataSource.detect()` tags runs as synthetic / bench / hil /
+  production; dashboard sidebar shows a colour-coded data-source badge.
+- **Hardware & harness analysis** (`efuse_datagen/analysis/hardware_harness.py`) — IC
+  benchmarking, wiring/connector sizing validation, thermal headroom metrics. Works on
+  any data source (synthetic or real).
+- Wire gauge (`wire_gauge_awg`) and run length (`wire_run_length_m`) fields on `ChannelMeta`.
+- Bus voltage nominal field (`bus_voltage_nominal_v`) on `SimulationConfig`.
+
+### Changed
+- **Dashboard modularised** — monolithic 790-line `dashboard_app.py` replaced with a
+  140-line orchestrator that delegates to `efuse_datagen/dashboard/tabs/` modules
+  (overview, signals, features, protection, config).
+- Dashboard tabs consolidated from 6 to 5: merged Fault Analysis + Protection Events →
+  "Fault & Protection"; renamed Telemetry → Signals.
+- `list_runs()` now scans 2 levels deep to find `telemetry.parquet`, supporting nested
+  run directories (e.g., `output/bench/<run_id>/`).
+- `load_run()` handles empty DataFrames and non-datetime timestamp columns gracefully.
+
 ## [0.1.1] — 2026-04-07
 
 ### Changed
@@ -44,5 +72,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 31 pytest tests covering generation, protection logic, bus voltage events, thermal coupling, and power states.
 - Comprehensive documentation: architecture, configuration, data model, drive cycles, dashboard, onboarding.
 
+[Unreleased]: https://github.com/jayaprakash87/efuse-telemetry-generator/compare/v0.1.1...HEAD
 [0.1.1]: https://github.com/jayaprakash87/efuse-telemetry-generator/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/jayaprakash87/efuse-telemetry-generator/releases/tag/v0.1.0

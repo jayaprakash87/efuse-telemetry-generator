@@ -65,6 +65,7 @@ dashboard = [
 
 [project.scripts]
 efuse-gen = "efuse_datagen.cli:app"
+efuse-ingest = "efuse_datagen.cli:ingest_app"
 efuse-dashboard = "efuse_datagen.dashboard_launcher:main"
 
 [tool.setuptools.packages.find]

@@ -101,9 +101,10 @@ The generator creates these scenarios on demand with precise ground-truth labels
          │
          ▼
 ┌──────────────────────────────────────────────────────────┐
-│              Streamlit Dashboard (app.py)                 │
-│  6-tab interactive UI: Overview, Telemetry, Features,    │
-│  Fault Analysis, Protection Events, Config               │
+│              Streamlit Dashboard (dashboard_app.py)     │
+│  5-tab modular UI: Overview, Signals, Features,         │
+│  Fault & Protection, Config                              │
+│  Data-source aware: synthetic / bench / HIL / production │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -190,13 +191,28 @@ Writes Parquet (default), CSV, or JSON. Handles:
 - `drive_cycles.parquet` — cycle-level metadata
 - Disk space check before writes
 
-### `efuse_datagen/cli.py` — CLI Entry Point
+### `efuse_datagen/cli.py` — CLI Entry Points
 
-Typer-based. Auto-detects single vs multi-cycle from config. Multi-cycle mode uses Rich progress bar. Always writes channel manifest; writes drive_cycles only when multi-cycle.
+Typer-based. Two entry points:
+- **`efuse-gen`** — Synthetic data generation. Auto-detects single vs multi-cycle from config. Multi-cycle mode uses Rich progress bar. Always writes channel manifest; writes drive_cycles only when multi-cycle.
+- **`efuse-ingest`** — Measurement data ingestion. Accepts a file or directory with column mapping, writes standard run directory.
+
+### `efuse_datagen/ingestion/` — Measurement Data Ingestion
+
+`MeasurementAdapter` loads real-world recordings (CSV, Parquet, MDF/MF4, BLF/ASC CAN logs) and maps them into the standard telemetry schema via configurable column mapping. `save_as_run()` writes the result in the same run directory format the generator produces, so the dashboard and all analysis tools work without modification.
+
+`DataSource.detect()` inspects a run directory and returns `synthetic`, `bench`, `hil`, or `production` — used by the dashboard to display a data-source badge.
+
+### `efuse_datagen/analysis/hardware_harness.py` — Hardware Analysis
+
+Data-agnostic analysis functions that work on any telemetry (synthetic or real):
+- **IC benchmarking** — per-channel thermal headroom, power dissipation, trip counts
+- **Wiring/connector sizing** — voltage drop vs harness resistance, gauge adequacy
+- **Thermal headroom** — peak junction temperature vs thermal shutdown threshold
 
 ### `dashboard/app.py` — Visualisation
 
-6-tab Streamlit app. Loads output Parquet files + channel manifest. Sidebar filters: run, zone, day (multi-cycle), channel (with load name labels, 8-channel display cap). Uses Plotly for all charts.
+5-tab modular Streamlit dashboard. Slim orchestrator `dashboard_app.py` delegates to tab modules in `efuse_datagen/dashboard/tabs/`. Shared utilities (data loaders, fault palette, data-source detection) live in `_shared.py`. Sidebar: run selector, data-source badge, zone filter, day filter (multi-cycle), channel multi-select with load name labels.
 
 ---
 
@@ -220,5 +236,6 @@ Typer-based. Auto-detects single vs multi-cycle from config. Multi-cycle mode us
 - **Add a fault type:** Add enum to `FaultType`, add waveform method to `TelemetryGenerator`, add to `FaultRateConfig`
 - **Add a vehicle topology:** Create new `*_topology()` function in `catalog.py`
 - **Add a feature:** Add computation in `FeatureEngine.compute()`
-- **Add a dashboard tab:** Add tab in `app.py` tab list, add rendering function
+- **Add a dashboard tab:** Create a module in `efuse_datagen/dashboard/tabs/`, add a `render(**ctx)` function, register in `dashboard_app.py` tab list
 - **Add an output format:** Extend `StorageWriter` format dispatch
+- **Add a measurement format:** Add a `_read_*` method to `MeasurementAdapter` in `ingestion/`

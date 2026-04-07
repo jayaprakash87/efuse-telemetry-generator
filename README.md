@@ -153,14 +153,34 @@ The dashboard reads `output/` from the current working directory by default. Set
 
 | Tab | Contents |
 |-----|----------|
-| **📊 Overview** | KPI cards, drive cycle Gantt timeline, fault distribution pie, per-channel fault exposure, channel summary table |
-| **📡 Telemetry** | Current / voltage / temperature time series with fault shading and power-off grey ribbons |
-| **🔬 Features** | Rolling RMS, spike score, temperature slope, trip frequency, recovery time plots |
-| **⚠️ Fault Analysis** | Fault heatmap by channel/time, severity histogram, intensity correlation |
-| **🛡️ Protection Events** | Per-mechanism timeline (SCP, I²T, latch-off, thermal shutdown), reset counter scatter |
+| **📊 Overview** | KPI cards, drive cycle Gantt timeline, fault distribution pie, channel summary table |
+| **📡 Signals** | Current / voltage / temperature time series with fault shading and power-off grey ribbons |
+| **🔬 Features** | Rolling RMS, spike score, temperature slope, trip frequency plots with fault overlay |
+| **🛡️ Fault & Protection** | Fault timeline Gantt, severity histogram, fault table, protection event rates, event heatmap |
 | **📋 Config** | YAML config viewer, channel inventory table, zone distribution chart |
 
-**Sidebar:** Run selector, zone filter (from channel manifest), day filter (multi-cycle), channel multi-select with load name labels. Limits display to 8 channels for performance.
+**Sidebar:** Run selector, data source banner (synthetic / bench / HIL / production), zone filter (from channel manifest), day filter (multi-cycle), channel multi-select with load name labels.
+
+## Measurement Data Ingestion
+
+Ingest real bench, HIL, or production recordings into the same run format the generator produces — so the dashboard and analysis pipeline work identically on real data.
+
+```bash
+# Single file with column mapping
+efuse-ingest recording.csv \
+  --map "I_ch01=current_a,U_bat=voltage_v,T_junc=temperature_c" \
+  --channel ch_001
+
+# Directory of per-channel CSVs (channel_id derived from filenames)
+efuse-ingest bench_data/ --glob "*.csv"
+
+# Tag the data source
+efuse-ingest hil_capture.parquet --source-tag hil
+```
+
+Supported formats: CSV/TSV, Parquet, MDF/MF4 (requires `asammdf`), BLF/ASC CAN logs (requires `python-can` + `cantools`).
+
+Ingested runs appear in the dashboard alongside synthetic runs, with a data-source badge in the sidebar.
 
 ## Built-In Configs
 
@@ -181,14 +201,20 @@ efuse_datagen/
 │   ├── catalog.py            # eFuse IC catalog (19 families) + 65-channel BEV topology factory
 │   ├── builtin.py            # Built-in config loader and registry
 │   └── templates/*.yaml      # Canonical packaged scenario configs
-├── dashboard_app.py          # Packaged Streamlit dashboard app
+├── dashboard_app.py          # Slim Streamlit orchestrator (delegates to tab modules)
 ├── dashboard_launcher.py     # efuse-dashboard entry point
+├── dashboard/
+│   ├── _shared.py            # Data loaders, fault palette, data-source detection
+│   └── tabs/                 # One module per tab: overview, signals, features, protection, config
 ├── simulation/
 │   ├── generator.py          # TelemetryGenerator — signal synthesis, fault waveforms, protection
 │   └── drive_cycles.py       # DriveCyclePlanner — schedule, fault distribution, multi-cycle orchestration
 ├── features/engine.py        # FeatureEngine — rolling statistics, anomaly scores
 ├── storage/writer.py         # StorageWriter — Parquet/CSV/JSON output + manifest
-├── cli.py                    # Typer CLI entry point
+├── ingestion/                # MeasurementAdapter — load real bench/HIL/production data
+├── analysis/
+│   └── hardware_harness.py   # IC benchmarking, wiring sizing, thermal headroom (data-agnostic)
+├── cli.py                    # Typer CLI: efuse-gen + efuse-ingest entry points
 └── utils/logging.py          # Logging configuration
 dashboard/
 └── app.py                    # Repo compatibility wrapper for the packaged dashboard

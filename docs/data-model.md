@@ -13,12 +13,16 @@ output/<run_id>/
 ├── telemetry.parquet          # Raw per-sample signals
 ├── features.parquet           # Rolling derived features
 ├── labels.parquet             # Ground-truth fault windows
-├── channel_manifest.parquet   # Channel topology metadata
+├── channel_manifest.parquet   # Channel topology metadata (synthetic only)
 ├── drive_cycles.parquet       # Drive cycle metadata (multi-cycle only)
-└── config.yaml                # Full config snapshot
+├── config.yaml                # Full config snapshot (synthetic only)
+├── data_source.txt            # Data origin tag: synthetic|bench|hil|production (ingested runs)
+└── metadata.json              # Arbitrary metadata (ingested runs, optional)
 ```
 
 `<run_id>` format: `YYYYMMDD-HHMMSS-<6-char-random>`, e.g. `20260407-114810-dgldik`.
+
+Runs from `efuse-gen` include `config.yaml` and `channel_manifest.parquet`. Runs from `efuse-ingest` include `data_source.txt` and always have `telemetry.parquet`, `features.parquet`, and `labels.parquet` (labels may be empty if no ground truth was provided).
 
 ---
 
