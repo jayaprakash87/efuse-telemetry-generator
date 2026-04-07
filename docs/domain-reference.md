@@ -50,32 +50,23 @@ Each entry defines: Rds,on, I_max, I_trip ranges, k_ILIS current-sense ratio, AD
 
 Modern BEVs replace the central fuse box with distributed **Zone Controllers** (ZCs) — one per physical vehicle zone. Each ZC is an ECU containing:
 
+```mermaid
+flowchart TD
+     subgraph zc[Zone Controller ECU]
+          ef4[eFuse IC 4 ch]
+          ef2[eFuse IC 2 ch]
+          ef1[eFuse IC 1 ch]
+          cdd[CDD driver]
+          com[CAN LIN stack]
+          ef4 -->|SPI| cdd
+          ef2 -->|SPI| cdd
+          ef1 -->|SPI| cdd
+          cdd --> com
+     end
+     com --> vehicle[Vehicle Bus]
 ```
-┌─────────────────────────────────────────────────────┐
-│                 Zone Controller ECU                   │
-│                                                       │
-│  ┌──────────┐  ┌──────────┐       ┌──────────┐      │
-│  │ eFuse IC │  │ eFuse IC │  ...  │ eFuse IC │      │
-│  │ (4-ch)   │  │ (2-ch)   │       │ (1-ch)   │      │
-│  └────┬─────┘  └────┬─────┘       └────┬─────┘      │
-│       │ SPI         │ SPI              │ SPI         │
-│  ┌────┴─────────────┴──────────────────┴─────┐       │
-│  │         CDD (Complex Device Driver)        │       │
-│  │  - Reads ISENSE ADC values via SPI         │       │
-│  │  - Reads IC status/diagnostic registers    │       │
-│  │  - Commands gate on/off via SPI            │       │
-│  └─────────────────┬─────────────────────────┘       │
-│                    │ COM                              │
-│              ┌─────┴─────┐                           │
-│              │ CAN / LIN │                           │
-│              │  Stack    │                           │
-│              └─────┬─────┘                           │
-└────────────────────┼─────────────────────────────────┘
-                     │ CAN bus
-              ┌──────┴──────┐
-              │ Vehicle Bus │
-              └─────────────┘
-```
+
+Inside the ECU, the CDD reads current, temperature, and diagnostic status from each eFuse IC over SPI, then publishes application-visible telemetry over the in-vehicle network.
 
 **Signal chain in the real vehicle:**
 
@@ -106,6 +97,33 @@ The generator models **every stage** of this chain, including:
 ## 3. Signal Chain Model
 
 The generator synthesises signals through an 10-stage pipeline per channel:
+
+```mermaid
+flowchart LR
+     bus[12 V Bus]
+     fet[eFuse MOSFET]
+     harness[Harness + Connector]
+     load[Vehicle Load]
+     thermal[RC thermal model]
+     faults[Fault injection]
+     ilis[ISENSE ILIS mirror]
+     rilis[R_ILIS Resistor]
+     adc[CDD ADC and quantization]
+     can[CAN packing]
+     app[Diagnostics analytics ML]
+
+     bus --> fet --> harness --> load
+     fet --> thermal
+     thermal --> ilis
+     fet --> faults
+     harness --> faults
+     load --> faults
+     faults --> ilis --> rilis --> adc --> can --> app
+```
+
+The diagram above shows the path that matters to downstream consumers: physical load current flows through the MOSFET and harness, faults perturb that path, the ISENSE chain converts it into an ADC-visible quantity, and CAN packing imposes the final resolution limit seen by software.
+
+For a stakeholder-oriented summary with a worked example, see [signal-chain-one-pager.md](signal-chain-one-pager.md).
 
 ### Stage 1 — Bus Voltage
 
@@ -222,6 +240,27 @@ Default resolution: **0.01 A/bit** and **0.01 V/bit** (16-bit CAN signal words).
 
 The generator models **three protection mechanisms** running in parallel, plus thermal shutdown and open-load diagnostics:
 
+```mermaid
+flowchart TD
+     start[Fault or inrush current appears] --> scp{Over SCP threshold}
+     scp -->|Yes| scp_trip[SCP trip]
+     scp -->|No| icl{Over I CL}
+     icl -->|Yes| clamp[Clamp current at I_CL]
+     icl -->|No| accumulate[Accumulate I squared over time]
+     clamp --> accumulate
+     accumulate --> i2t{Over I2T threshold}
+     i2t -->|No| run[Channel keeps running]
+     i2t -->|Yes| i2t_trip[I2T trip]
+     scp_trip --> off[Channel off during cooldown]
+     i2t_trip --> off
+     off --> retry{Retries remaining?}
+     retry -->|Yes| auto[Auto-retry channel]
+     retry -->|No| latch[Latch-off]
+     auto --> scp
+```
+
+This flow is why `current_limit_a` matters: the generator does not jump directly from overload to trip. It first clamps the current when the IC would regulate, then lets the F(i,t) integral decide whether the overload is brief enough to tolerate or severe enough to shut down.
+
 ### 4.1 Short-Circuit Protection (SCP)
 
 A fast analog comparator trips **immediately** when instantaneous current exceeds `short_circuit_threshold_a` (default: 3× `max_current_a`). Response time in real ICs: 3–10 µs.
@@ -282,6 +321,43 @@ The `protection_event` column in telemetry output encodes exactly **which** mech
 ## 5. Fault Catalog
 
 The generator supports **16 fault types**, each producing physically distinct waveform signatures:
+
+```mermaid
+flowchart TD
+     faults[16 Fault Types]
+     faults --> overcurrent[Overcurrent]
+     faults --> voltage[Voltage Disturbance]
+     faults --> aging[Degradation and aging]
+     faults --> sensing[Sensing and comms]
+     faults --> thermal[Thermal]
+     faults --> powerstate[Power state]
+     faults --> open[Open circuit]
+     faults --> ground[Ground]
+
+     overcurrent --> overload_spike[overload_spike]
+     overcurrent --> intermittent_overload[intermittent_overload]
+     overcurrent --> short_to_ground_1[short_to_ground]
+
+     voltage --> voltage_sag[voltage_sag]
+     voltage --> jump_start[jump_start]
+     voltage --> load_dump[load_dump]
+     voltage --> cold_crank[cold_crank]
+
+     aging --> thermal_drift[thermal_drift]
+     aging --> gradual_degradation[gradual_degradation]
+     aging --> connector_aging[connector_aging]
+
+     sensing --> noisy_sensor[noisy_sensor]
+     sensing --> dropped_packet[dropped_packet]
+
+     thermal --> thermal_coupling[thermal_coupling]
+     powerstate --> wake_transient[wake_transient]
+     open --> open_load[open_load]
+     ground --> ground_offset[ground_offset]
+     ground --> short_to_ground_2[short_to_ground]
+```
+
+The taxonomy matters because several faults can produce superficially similar current traces. The main discriminators are whether voltage moves with current, whether protection fires, and whether the effect is local to one channel or correlated across a shared node or die.
 
 ### 5.1 Overcurrent Faults
 
@@ -350,11 +426,19 @@ The generator supports **16 fault types**, each producing physically distinct wa
 
 The series path from eFuse output to load includes:
 
+```mermaid
+flowchart LR
+     fet[eFuse MOSFET]
+     pcb[PCB Trace]
+     zc[ZC Output Connector]
+     loom[Wire Harness]
+     load_conn[Load Connector]
+     load[Vehicle Load]
+
+     fet --> pcb --> zc --> loom --> load_conn --> load
 ```
-eFuse MOSFET → PCB trace → ZC output connector → wire harness → load connector → load
-              \_____________/\_____________________/\____________/
-              Rds,on (IC)     harness_r_ohm         connector_r_ohm
-```
+
+Series resistance is distributed across that path: `Rds,on` inside the IC, `harness_r_ohm` in the loom, and `connector_r_ohm` in the mating terminals.
 
 - `harness_r_ohm` (default 20 mΩ) — wire resistance, scales with length and gauge
 - `connector_r_ohm` (default 10 mΩ) — crimp terminal + housing contact resistance
@@ -368,6 +452,23 @@ The `connector_aging` fault models fretting corrosion that increases R_connector
 ---
 
 ## 7. Thermal Model Details
+
+```mermaid
+flowchart LR
+     current[Load Current]
+     power[Power dissipation]
+     temp[Junction temperature]
+     rdson[Rds on vs temperature]
+     coupled[Neighbour die heating]
+
+     current --> power
+     rdson --> power
+     power --> temp
+     temp --> rdson
+     coupled --> temp
+```
+
+This positive feedback loop is the core reason the thermal model cannot be replaced by a static temperature offset. Once junction temperature rises, Rds,on rises with it, which increases power dissipation again.
 
 ### Junction Temperature
 
