@@ -500,12 +500,34 @@ class ChannelMeta(BaseModel):
     )
     emi_amplitude_a: float = Field(default=0.05, ge=0.0, description="EMI spike amplitude in amps")
 
+    # --- CAN signal packing resolution ---
+    # CAN signals are transmitted as scaled integers in 16-bit words.
+    # The physical resolution (e.g. 0.01 A/bit) is coarser than the
+    # upstream ADC, adding a second quantization layer that dominates
+    # the final signal granularity seen by application-layer consumers.
+    # Set to 0.0 to skip CAN packing (e.g. for XCP / raw ADC streams).
+    can_current_resolution_a: float = Field(
+        default=0.01,
+        ge=0.0,
+        description="CAN signal packing resolution for current in A/bit (0 = skip)",
+    )
+    can_voltage_resolution_v: float = Field(
+        default=0.01,
+        ge=0.0,
+        description="CAN signal packing resolution for voltage in V/bit (0 = skip)",
+    )
+
     # Protection behavior
     fit_threshold_a2s: float = Field(
         default=0.0, ge=0.0, description="F(i,t) energy threshold A²·s (0 = auto)"
     )
     short_circuit_threshold_a: float = Field(
         default=0.0, ge=0.0, description="Instantaneous SCP trip (A) (0 = auto)"
+    )
+    current_limit_a: float = Field(
+        default=0.0,
+        ge=0.0,
+        description="Current-limiting clamp level (A). IC clamps output at I_CL before F(i,t) trips. 0 = auto as 1.5× fuse_rating_a",
     )
     thermal_shutdown_c: float = Field(
         default=150.0, ge=50.0, description="Junction temp for thermal shutdown (°C)"

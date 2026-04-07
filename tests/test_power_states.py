@@ -43,6 +43,7 @@ def _make_ch_kl30(**extra) -> ChannelMeta:
         rds_on_tempco_exp=0.0,
         power_class=PowerClass.ALWAYS_ON,
         sleep_quiescent_ua=300.0,
+        can_current_resolution_a=0.0,  # disable CAN packing; dark current < CAN LSB
         **extra,
     )
 

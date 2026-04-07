@@ -447,12 +447,17 @@ class TelemetryGenerator:
         fault_end: int,
         interval_s: float,
     ) -> None:
-        """Model eFuse F(i,t) energy-integral protection with fast SCP.
+        """Model eFuse F(i,t) energy-integral protection with current-limiting and fast SCP.
 
-        Two protection mechanisms run in parallel:
+        Three protection mechanisms run in parallel:
           1. **Short-circuit (SCP)** — instantaneous comparator trip when
              current exceeds short_circuit_threshold_a.
-          2. **F(i,t) overcurrent** — trips when cumulative ∫ I² dt exceeds
+          2. **Current limiting (I_CL)** — when current exceeds the IC's
+             current-limit clamp level, the IC actively regulates the output
+             to hold current at I_CL.  The F(i,t) energy integral continues
+             accumulating during the clamp phase because the IC is still
+             dissipating P = I_CL² × R_ds,on.
+          3. **F(i,t) overcurrent** — trips when cumulative ∫ I² dt exceeds
              fit_threshold_a2s.  This allows brief inrush spikes but catches
              sustained overloads.
 
@@ -469,6 +474,12 @@ class TelemetryGenerator:
         scp_thresh = ch.short_circuit_threshold_a
         if scp_thresh <= 0:
             scp_thresh = ch.max_current_a * 3.0
+
+        # Current-limit clamp: IC regulates output at I_CL before F(i,t) trips.
+        # Typical PROFET+2: I_CL ≈ 1.3–1.7× fuse rating (silicon-dependent).
+        i_cl = ch.current_limit_a
+        if i_cl <= 0:
+            i_cl = ch.fuse_rating_a * 1.5
 
         cooldown_samples = max(int(ch.cooldown_s / interval_s), 1)
         retries_done = 0
@@ -487,6 +498,15 @@ class TelemetryGenerator:
                     i = j
                     trip_reason = ProtectionEvent.SCP
                     break
+
+                # Current limiting: clamp current at I_CL when above the
+                # limit.  The IC actively regulates, so the load sees I_CL
+                # (plus small noise from the regulation loop) instead of the
+                # full fault current.  Energy still accumulates at I_CL.
+                if i_abs > i_cl:
+                    sign = 1.0 if current[j] >= 0 else -1.0
+                    current[j] = sign * (i_cl + self.rng.normal(0, i_cl * 0.02))
+                    i_abs = i_cl
 
                 # F(i,t) energy integration (only when above nominal)
                 if i_abs > ch.nominal_current_a:
@@ -956,6 +976,23 @@ class TelemetryGenerator:
             v_lsb = v_adc_range / (2**ch.voltage_adc_bits)
             v_valid = ~np.isnan(voltage)
             voltage[v_valid] = np.round(voltage[v_valid] / v_lsb) * v_lsb
+
+        # --- CAN signal packing quantization ---
+        # CAN frames carry physical signals as scaled integers (e.g. 16-bit
+        # word, resolution 0.01 A/bit).  This is a coarser quantization
+        # layer on top of the ADC — it dominates the final signal granularity
+        # seen by any application-layer or off-board consumer.
+        # Skip when resolution is 0 (raw ADC / XCP stream) or when
+        # source_protocol is not CAN.
+        if ch.can_current_resolution_a > 0 and ch.source_protocol.value == "can":
+            c_res = ch.can_current_resolution_a
+            c_valid = ~np.isnan(current)
+            current[c_valid] = np.round(current[c_valid] / c_res) * c_res
+
+        if ch.can_voltage_resolution_v > 0 and ch.source_protocol.value == "can":
+            v_res = ch.can_voltage_resolution_v
+            v_valid = ~np.isnan(voltage)
+            voltage[v_valid] = np.round(voltage[v_valid] / v_res) * v_res
 
         # --- Build DataFrame directly (vectorized — avoids per-row loop) ---
         # Compute cumulative resets vectorized

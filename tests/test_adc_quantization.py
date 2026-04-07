@@ -12,6 +12,7 @@ def test_voltage_adc_quantization():
         load_name="test",
         nominal_current_a=5.0,
         voltage_adc_bits=10,
+        can_voltage_resolution_v=0.0,  # disable CAN packing to isolate ADC test
     )
     cfg = make_config(channels=[ch], duration_s=5.0, sample_interval_ms=50.0)
     gen = TelemetryGenerator(cfg)
@@ -32,6 +33,7 @@ def test_current_adc_quantization():
         nominal_current_a=5.0,
         max_current_a=20.0,
         current_adc_bits=10,  # coarse — easy to verify
+        can_current_resolution_a=0.0,  # disable CAN packing to isolate ADC test
     )
     cfg = make_config(channels=[ch], duration_s=5.0, sample_interval_ms=50.0)
     gen = TelemetryGenerator(cfg)
