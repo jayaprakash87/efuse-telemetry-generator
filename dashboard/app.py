@@ -206,7 +206,7 @@ with tab_overview:
             )
             pie.update_traces(textposition="inside", textinfo="percent+label")
             pie.update_layout(showlegend=False, margin=dict(t=10, b=10, l=10, r=10))
-            st.plotly_chart(pie, use_container_width=True)
+            st.plotly_chart(pie, width="stretch")
 
     with col_r:
         st.subheader("Fault Exposure per Channel")
@@ -231,7 +231,7 @@ with tab_overview:
                 legend_title_text="Fault Type",
                 margin=dict(t=10, b=10, l=10, r=10),
             )
-            st.plotly_chart(bar, use_container_width=True)
+            st.plotly_chart(bar, width="stretch")
 
     st.subheader("Channel Summary")
     summary = (
@@ -247,7 +247,7 @@ with tab_overview:
         .reset_index()
     )
     summary.columns = ["Channel", "Mean I (A)", "Max I (A)", "Mean T (°C)", "Max T (°C)", "Trips"]
-    st.dataframe(summary, use_container_width=True, hide_index=True)
+    st.dataframe(summary, width="stretch", hide_index=True)
 
 # ============================================================
 # TAB 2 — TELEMETRY
@@ -323,7 +323,8 @@ with tab_telemetry:
         fault_legend_traces: dict[str, bool] = {}
         for fault_type in ch_lab[ch_lab["fault_type"] != "none"]["fault_type"].unique():
             color = FAULT_PALETTE.get(fault_type, "#999999")
-            fill = color + "30"
+            r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
+            fill = f"rgba({r},{g},{b},0.19)"  # noqa: F841
             fault_legend_traces[fault_type] = color
 
         # Add one invisible scatter per fault type for the legend
@@ -342,7 +343,8 @@ with tab_telemetry:
         shapes = []
         for fault_type in ch_lab[ch_lab["fault_type"] != "none"]["fault_type"].unique():
             color = FAULT_PALETTE.get(fault_type, "#999999")
-            fill = color + "30"
+            r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
+            fill = f"rgba({r},{g},{b},0.19)"
             windows = ch_lab[ch_lab["fault_type"] == fault_type]
             ts_sorted = windows["timestamp"].sort_values()
             gap = pd.Timedelta("500ms")
@@ -378,7 +380,7 @@ with tab_telemetry:
         fig.update_yaxes(title_text="V", row=2, col=1)
         fig.update_yaxes(title_text="°C", row=3, col=1)
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
         st.markdown("---")
 
 # ============================================================
@@ -439,7 +441,8 @@ with tab_features:
             shapes = []
             for fault_type in ch_lab[ch_lab["fault_type"] != "none"]["fault_type"].unique():
                 color = FAULT_PALETTE.get(fault_type, "#999999")
-                fill = color + "30"
+                r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
+                fill = f"rgba({r},{g},{b},0.19)"
                 windows = ch_lab[ch_lab["fault_type"] == fault_type]
                 ts_sorted = windows["timestamp"].sort_values()
                 gap = pd.Timedelta("500ms")
@@ -476,7 +479,7 @@ with tab_features:
                 height=200 * n,
                 margin=dict(t=40, b=20, l=70, r=20),
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
             st.markdown("---")
 
 # ============================================================
@@ -525,7 +528,7 @@ with tab_faults:
                 labels={"FaultType": "Fault Type"},
             )
             fig_gantt.update_layout(height=max(300, len(ch_order) * 60 + 80), margin=dict(t=10, b=10))
-            st.plotly_chart(fig_gantt, use_container_width=True)
+            st.plotly_chart(fig_gantt, width="stretch")
         else:
             st.info("No fault windows found for selected channels.")
 
@@ -542,7 +545,7 @@ with tab_faults:
                 labels={"severity": "Severity Score"},
             )
             hist.update_layout(showlegend=False, margin=dict(t=10, b=10))
-            st.plotly_chart(hist, use_container_width=True)
+            st.plotly_chart(hist, width="stretch")
         else:
             st.info("No fault data.")
 
@@ -562,7 +565,7 @@ with tab_faults:
             "description": "Description",
         })
     )
-    st.dataframe(fault_table, use_container_width=True, hide_index=True)
+    st.dataframe(fault_table, width="stretch", hide_index=True)
 
 # ============================================================
 # TAB 5 — PROTECTION EVENTS
@@ -595,7 +598,7 @@ with tab_protection:
                 labels={"protection_event_rate": "Event Rate", "channel_id": "Channel"},
             )
             fig_prot.update_layout(height=300, margin=dict(t=10, b=10))
-            st.plotly_chart(fig_prot, use_container_width=True)
+            st.plotly_chart(fig_prot, width="stretch")
         else:
             st.info("protection_event_rate not in features.")
 
@@ -620,7 +623,7 @@ with tab_protection:
                 labels={"channel_id": "Channel"},
             )
             bar_prot.update_layout(height=300, margin=dict(t=10, b=10))
-            st.plotly_chart(bar_prot, use_container_width=True)
+            st.plotly_chart(bar_prot, width="stretch")
         else:
             st.info("No protection event count columns found.")
 
@@ -640,7 +643,7 @@ with tab_protection:
             aspect="auto",
         )
         fig_heat.update_layout(height=300, margin=dict(t=10, b=10))
-        st.plotly_chart(fig_heat, use_container_width=True)
+        st.plotly_chart(fig_heat, width="stretch")
     else:
         if len(selected_channels) == 1:
             st.info("Select multiple channels to see the heatmap.")
