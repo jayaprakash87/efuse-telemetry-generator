@@ -18,7 +18,6 @@ The generator produces:
 
 from __future__ import annotations
 
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -30,6 +29,7 @@ from rich.console import Console
 from efuse_datagen.config.builtin import list_bundled_configs, load_bundled_config
 from efuse_datagen.config.models import (
     FeatureConfig,
+    PlatformConfig,
     SimulationConfig,
     StorageConfig,
     load_config,
