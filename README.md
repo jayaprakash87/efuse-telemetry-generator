@@ -48,7 +48,8 @@ Produces physically grounded, labelled datasets without requiring lab hardware o
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev]"          # generator + tests
+pip install -e ".[dev,dashboard]"  # also includes Streamlit dashboard
 ```
 
 ## Usage
@@ -84,6 +85,32 @@ Output is written to `output/<YYYYMMDD-HHMMSS-xxxx>/` — each run is isolated.
 python examples/quickstart.py
 ```
 
+## Dashboard
+
+Interactive Streamlit dashboard for exploring generated data — intended for eFuse team demos.
+
+```bash
+# Install dashboard dependencies (one-time)
+pip install -e ".[dashboard]"
+
+# Generate some data first
+vip-gen --duration 120
+
+# Launch
+streamlit run dashboard/app.py
+# Opens at http://localhost:8501
+```
+
+| Tab | Contents |
+|-----|----------|
+| **Overview** | KPI cards, fault-type distribution, per-channel fault exposure, channel summary table |
+| **Telemetry** | Current / voltage / temperature time series with fault windows shaded by type |
+| **Features** | Configurable rolling-feature plots (RMS, spike score, temp slope, trip frequency, …) |
+| **Fault Analysis** | Gantt fault timeline, severity histogram, fault window table |
+| **Protection Events** | Event rate over time, SCP/I2T/latch-off/thermal shutdown counts, multi-channel heatmap |
+
+The sidebar lets you select any run from `output/` and filter to specific channels.
+
 ## Scenario Configs
 
 | Config | Description |
@@ -98,7 +125,7 @@ python examples/quickstart.py
 ## Tests
 
 ```bash
-pytest tests/ -v      # 37 generator tests
+pytest tests/ -v      # 31 generator tests
 ```
 
 ## Project Structure
@@ -115,7 +142,8 @@ vip_datagen/
 ├── utils/logging.py         # Structured logging with run_id correlation
 └── cli.py                   # vip-gen CLI (Typer)
 
+dashboard/app.py             # Streamlit dashboard (5 tabs, Plotly charts)
 configs/                     # Scenario YAML files
 examples/                    # quickstart.py
-tests/                       # 37 generator tests
+tests/                       # 31 generator tests
 ```
