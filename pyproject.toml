@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vip-data-generator"
+version = "0.1.0"
+description = "Standalone synthetic eFuse telemetry generator — physics-based signal synthesis, feature extraction, and fault labelling for ZC architecture validation"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+    "pydantic>=2.0",
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "pyarrow>=14.0",
+    "pyyaml>=6.0",
+    "typer>=0.9",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "ruff",
+]
+
+[project.scripts]
+vip-gen = "vip_datagen.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vip_datagen*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
