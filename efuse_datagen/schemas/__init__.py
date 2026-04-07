@@ -1,0 +1,1 @@
+"""Pydantic data models, enums, and type contracts for eFuse telemetry schemas."""

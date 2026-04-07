@@ -1,0 +1,1 @@
+"""Output persistence: Parquet, CSV, and JSON writers with channel manifest generation."""

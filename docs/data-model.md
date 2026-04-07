@@ -115,7 +115,7 @@ One row per fault injection event. Ground-truth for supervised ML training.
 | Column | Type | Unit | Description |
 |--------|------|------|-------------|
 | `channel_id` | string | — | Target channel |
-| `fault_type` | string | — | One of the 14 `FaultType` enum values |
+| `fault_type` | string | — | One of the 16 `FaultType` enum values |
 | `start_time` | datetime64[ns] | — | Fault window start |
 | `end_time` | datetime64[ns] | — | Fault window end |
 | `duration_s` | float64 | s | Fault duration |
@@ -140,6 +140,8 @@ One row per fault injection event. Ground-truth for supervised ML training.
 | `cold_crank` | Bus voltage → 7–9 V sag | Starter motor engagement |
 | `thermal_coupling` | Gentle temperature rise (neighbour die) | Adjacent high-power channel |
 | `wake_transient` | Current spike above nominal at SLEEP→ACTIVE | Inrush from capacitive load |
+| `ground_offset` | GND node potential rises (V/I biased high) | Corroded GND bond / strap |
+| `short_to_ground` | I = V_bus/(Rds+R_stg), V_load ≈ 0 V, protection trip | Wire chafing to chassis GND |
 
 ---
 

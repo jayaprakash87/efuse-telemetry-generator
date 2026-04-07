@@ -161,7 +161,9 @@ simulation:
       gradual_degradation: 0.01
       cold_crank: 0.50          # only fires when T < 5°C
       wake_transient: 0.15
-      # ... (all 14 types supported)
+      ground_offset: 0.02
+      short_to_ground: 0.01
+      # ... (all 16 types supported)
 ```
 
 See [configuration.md](configuration.md) for full field reference.

@@ -1,0 +1,1 @@
+"""Simulation engine: signal synthesis, fault waveforms, protection state machine, and multi-cycle orchestration."""

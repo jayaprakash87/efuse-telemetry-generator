@@ -85,6 +85,7 @@ class DriveCycleConfig(BaseModel):
 
 
 class SimulationConfig(BaseModel):
+    """Core scenario definition: channels, faults, power states, and drive cycle settings."""
     scenario_id: str = "default"
     name: str = "Default Scenario"
     description: str = ""
@@ -130,6 +131,7 @@ class SimulationConfig(BaseModel):
 
 
 class FeatureConfig(BaseModel):
+    """Rolling-window parameters for the feature extraction engine."""
     window_duration_s: float = Field(default=5.0, description="Rolling window duration in seconds")
     min_duration_s: float = Field(
         default=1.0, description="Minimum data duration before features are valid"
@@ -161,6 +163,7 @@ class FeatureConfig(BaseModel):
 
 
 class StorageConfig(BaseModel):
+    """Output persistence settings: directory and file format."""
     output_dir: str = "output"
     format: str = "parquet"  # "parquet" | "csv" | "json"
 
@@ -182,7 +185,7 @@ class GeneratorConfig(BaseModel):
 # extra top-level keys like 'model', 'edge', 'mqtt') still parse cleanly —
 # Pydantic simply ignores unknown fields by default.
 class PlatformConfig(GeneratorConfig):
-    """Superset of GeneratorConfig — tolerates full VIP YAML files."""
+    """Superset of GeneratorConfig — tolerates extra top-level YAML keys."""
 
     model_config = {"extra": "ignore"}
 

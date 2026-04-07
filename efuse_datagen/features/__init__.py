@@ -1,0 +1,1 @@
+"""Feature extraction: rolling-window statistics, anomaly scores, and degradation trends."""

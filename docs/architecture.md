@@ -1,5 +1,7 @@
 # Architecture
 
+> **For hardware engineers:** See [domain-reference.md](domain-reference.md) for eFuse protection theory, the full 16-fault catalog with physics explanations, signal chain models, and a glossary of automotive eFuse terminology.
+
 ## Purpose
 
 eFuse Telemetry Generator synthesises physically realistic eFuse telemetry for Battery Electric Vehicle (BEV) Zone Controller architectures. It exists because:
@@ -117,7 +119,7 @@ Key types:
 - **`EFuseFamily`** — 18 supported IC families (enum)
 - **`EFuseProfile`** — Electrical/thermal parameters for one IC: Rds_on, I_max, ISENSE ratio, ADC bits, protection thresholds
 - **`ChannelMeta`** — ~50 fields defining one eFuse channel: which IC, what load, duty cycle, ambient temp, noise profile
-- **`FaultType`** — 14 fault categories (enum)
+- **`FaultType`** — 16 fault categories (enum)
 - **`FaultInjection`** — fault placement: channel, type, start time, duration, intensity
 - **`ProtectionEvent`** — SCP, I2T, LATCH_OFF, THERMAL_SHUTDOWN, OPEN_LOAD_DIAG, OVER_VOLTAGE
 - **`TelemetryRecord`** — one sample: timestamp, channel_id, current_a, voltage_v, temperature_c, state_on_off, protection_event, …
@@ -137,16 +139,24 @@ Pydantic models for YAML config parsing:
 
 ### `efuse_datagen/simulation/generator.py` — Signal Synthesis Engine
 
-The core of the system. `TelemetryGenerator.generate()` loops over channels and time steps, applying an 8-stage pipeline:
+The core of the system. `TelemetryGenerator.generate()` loops over channels and time steps, applying a 10-stage pipeline:
 
 1. **Bus voltage** — slow drift (mHz correlated noise) around 13.8 V nominal
-2. **Power-state gating** — SLEEP → dark current (μA), CRANK → reduced voltage, ACTIVE → normal
-3. **Duty-cycle gating** — periodic on/off for loads like wiper motors or PTC heaters
-4. **Composite noise** — 1/f pink + ADC quantization + thermal (Johnson-Nyquist) + EMI burst
-5. **RC thermal model** — T_junction tracks I²×Rds_on with Rds_on tempco feedback loop
-6. **ISENSE chain** — converts physical current to sensed current: k_ILIS(T) × I × R_ILIS (+/- tolerance)
-7. **Fault waveform injection** — 14 fault-type-specific waveform generators (detailed below)
-8. **Protection response** — SCP comparator → immediate trip; F(i,t) accumulator → trip after energy threshold; retry N times; then latch-off
+2. **Nominal current + composite noise** — 1/f pink + ADC quantization + thermal (Johnson-Nyquist) + EMI burst
+3. **Load turn-on transient** — load-type-specific inrush (motor 5×, capacitive 8×, etc.)
+4. **Voltage from bus − harness drop** — V_load = V_bus − I × (R_harness + R_connector)
+5. **Power-state gating** — SLEEP → dark current (μA), CRANK → reduced voltage, ACTIVE → normal
+6. **Duty-cycle gating** — periodic on/off for loads like wiper motors or PTC heaters
+7. **Fault waveform injection** — 16 fault-type-specific waveform generators
+8. **RC thermal model** — T_junction tracks I²×Rds_on with Rds_on tempco feedback loop
+9. **ISENSE chain + ADC quantization** — k_ILIS(T) × I × R_ILIS (±tolerance) then round-to-LSB
+10. **CAN signal packing** — second quantization layer (0.01 A/bit, 0.01 V/bit) for CAN-sourced channels
+
+**Protection model** runs in parallel with fault injection:
+- **SCP comparator** → immediate trip when I > threshold
+- **Current limiting (I_CL)** → IC clamps output at I_CL before F(i,t) trips
+- **F(i,t) energy integral** → trip after ∫I²dt exceeds threshold
+- Retry N times → then latch-off
 
 ### `efuse_datagen/simulation/drive_cycles.py` — Multi-Cycle Orchestrator
 

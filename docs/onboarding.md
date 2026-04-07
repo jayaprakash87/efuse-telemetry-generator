@@ -10,7 +10,7 @@ This document is for engineers joining the project or receiving a handover. It c
 
 It generates realistic current, voltage, and temperature signals for up to 65 eFuse channels across 4 vehicle zones, with:
 - Physically modelled noise, thermal dynamics, and sensing chain errors
-- 14 injectable fault types with ground-truth labels
+- 16 injectable fault types with ground-truth labels
 - Single-cycle (seconds to minutes) and multi-cycle (days to months) modes
 - An interactive Streamlit dashboard for visual analysis
 
@@ -72,7 +72,7 @@ efuse-gen --config one_month
 pytest -v
 ```
 
-31 tests covering generation, ADC quantization, protection logic, and thermal model.
+92 tests covering generation, ADC quantization, protection logic, thermal model, CAN signal packing, current limiting, and ground faults.
 
 ---
 
@@ -80,15 +80,18 @@ pytest -v
 
 ### eFuse Protection
 
-Each channel has two protection mechanisms:
+Each channel has three protection mechanisms running in parallel:
 1. **SCP (Short Circuit Protection)** — fast comparator, trips in microseconds when current exceeds a hard threshold
-2. **F(i,t) (Energy Integral)** — accumulates I² over time; trips when thermal energy exceeds the silicon's limit
+2. **Current Limiting (I_CL)** — IC actively clamps output current at I_CL (default 1.5× fuse rating) while F(i,t) energy continues accumulating
+3. **F(i,t) (Energy Integral)** — accumulates I² over time; trips when thermal energy exceeds the silicon's limit
 
 After a trip, the eFuse:
 1. Opens the gate (current → 0)
 2. Waits `cooldown_s`
 3. Retries up to `max_retries` times
 4. If retries exhausted → **latch-off** (permanent shutdown until ECU reset)
+
+See [domain-reference.md](domain-reference.md) for detailed hardware theory.
 
 ### Channel Topology
 
@@ -104,13 +107,15 @@ Each channel references an eFuse IC family from the **catalog** (`catalog.py`), 
 
 For each channel and each time step, the generator applies (in order):
 1. Bus voltage (slow drift)
-2. Power-state gating (SLEEP/CRANK/ACTIVE)
-3. Duty-cycle gating (on/off patterns for intermittent loads)
-4. Composite noise (1/f + ADC + thermal + EMI)
-5. RC thermal model (junction temperature)
-6. ISENSE chain (sense current with tolerance/tempco errors)
-7. Fault waveform (if active)
-8. Protection response (SCP/F(i,t) trip/retry/latch-off)
+2. Nominal current + composite noise (1/f + ADC + thermal + EMI)
+3. Load turn-on transient (inrush)
+4. Voltage from bus − harness drop
+5. Power-state gating (SLEEP/CRANK/ACTIVE)
+6. Duty-cycle gating (on/off patterns for intermittent loads)
+7. Fault waveform (if active) — 16 fault types
+8. RC thermal model (junction temperature)
+9. ISENSE chain + ADC quantization (sense current with tolerance/tempco errors)
+10. CAN signal packing (0.01 A/bit, 0.01 V/bit for CAN-sourced channels)
 
 ### Multi-Cycle Mode
 

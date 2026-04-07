@@ -90,6 +90,11 @@ Each channel defines one eFuse output. These are the most commonly used fields:
 | `max_retries` | int | `3` | Retry count before latch-off |
 | `i2t_threshold` | float | `500.0` | F(i,t) energy threshold (A²s) |
 | `scp_threshold_a` | float | `null` | SCP comparator threshold; null = auto from max_current_a |
+| `current_limit_a` | float | `0.0` | IC current-limiting clamp (A). 0 = auto (1.5× fuse_rating_a) |
+| `can_current_resolution_a` | float | `0.01` | CAN signal packing resolution for current (A/bit). 0 = skip |
+| `can_voltage_resolution_v` | float | `0.01` | CAN signal packing resolution for voltage (V/bit). 0 = skip |
+| `ground_offset_max_v` | float | `2.0` | Max GND node shift during GROUND_OFFSET fault (V) |
+| `stg_resistance_ohm` | float | `0.05` | Short-to-GND fault path resistance (Ω) |
 
 ### `simulation.fault_injections[]`
 
@@ -98,7 +103,7 @@ Manual fault placement for single-cycle scenarios:
 | Field | Type | Description |
 |-------|------|-------------|
 | `channel_id` | string | Target channel (must match a channel_id in channels list) |
-| `fault_type` | string | One of 14 fault types (see [data-model.md](data-model.md)) |
+| `fault_type` | string | One of 16 fault types (see [data-model.md](data-model.md)) |
 | `start_s` | float | Fault start time (seconds from scenario start) |
 | `duration_s` | float | Fault duration (seconds) |
 | `intensity` | float | Severity 0.0–1.0 (controls waveform amplitude) |
@@ -165,6 +170,8 @@ Probability per vehicle-hour of driving. When a Poisson draw fires, one random e
 | `load_dump` | float | `0.02` | Alternator collapse |
 | `thermal_coupling` | float | `0.03` | Die neighbour heating |
 | `wake_transient` | float | `0.15` | Inrush current at wake |
+| `ground_offset` | float | `0.02` | GND node potential shift (corroded bond) |
+| `short_to_ground` | float | `0.01` | Wire-to-chassis short circuit |
 
 ---
 

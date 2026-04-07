@@ -153,6 +153,8 @@ Fault types are mapped to consistent colours across all tabs:
 | `cold_crank` | Blue `#3b82f6` |
 | `thermal_coupling` | Violet `#8b5cf6` |
 | `wake_transient` | Teal `#14b8a6` |
+| `ground_offset` | Slate `#64748b` |
+| `short_to_ground` | Fuchsia `#d946ef` |
 
 ---
 

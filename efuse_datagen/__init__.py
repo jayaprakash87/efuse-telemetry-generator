@@ -1,0 +1,1 @@
+"""eFuse Telemetry Generator — synthetic telemetry for automotive Zone Controller architectures."""

@@ -6,7 +6,7 @@ Supports single-cycle quick runs and **month-long multi-cycle drive simulations*
 
 The package is distributed as a **full runtime package**: library, CLI, built-in sample configs, and dashboard launcher.
 
-> **Documentation:** See [`docs/`](docs/) for architecture deep-dive, data model reference, configuration guide, and onboarding materials.
+> **Documentation:** See [`docs/`](docs/) for architecture deep-dive, data model reference, configuration guide, onboarding materials, and [**eFuse domain reference**](docs/domain-reference.md) (for hardware engineers).
 
 ## What It Generates
 
@@ -25,7 +25,8 @@ The package is distributed as a **full runtime package**: library, CLI, built-in
 
 - **RC thermal model** — junction temperature with Rds,on positive feedback loop (PROFET+2 / VIPower tempco)
 - **ISENSE sensing chain** — k_ILIS tempco + R_ILIS manufacturing tolerance (frozen per-unit scatter)
-- **Dual protection** — F(i,t) energy integral + SCP comparator → trip → cooldown → retry → latch-off
+- **Dual protection + current limiting** — F(i,t) energy integral + SCP comparator + I_CL active current clamp → trip → cooldown → retry → latch-off
+- **CAN signal packing** — second quantization layer (0.01 A/bit, 0.01 V/bit) models CAN-transported resolution loss
 - **Composite noise** — 1/f pink noise + ADC quantization + thermal noise + sporadic EMI spikes
 - **Bus voltage events** — jump-start (16–24 V), load dump (ISO 16750-2, ~40 V spike), cold crank (7–9 V sag)
 - **Connector aging** — fretting corrosion model: R_c(t) = R_c0 × (1 + k × t²)
@@ -37,7 +38,7 @@ The package is distributed as a **full runtime package**: library, CLI, built-in
 
 Parametric models for Infineon PROFET+2 (BTS7002, BTS7004, BTS7006, BTS7008, BTS70041, BTS70061, BTS70081), Infineon TLE multi-channel (TLE9104SH), Infineon high-current BTS (BTS81000), ST VIPower (VN7140AJ, VND7020AJ, VNH7013AY, VNL5050, VND5025), and CUSTOM. Each entry defines: Rds,on, I_max, I_trip ranges, ISENSE ratio, ADC resolution, blanking time, retry count, F(i,t) threshold, and thermal parameters.
 
-### 14 Fault Types
+### 16 Fault Types
 
 | Fault | Description |
 |-------|-------------|
@@ -55,6 +56,8 @@ Parametric models for Infineon PROFET+2 (BTS7002, BTS7004, BTS7006, BTS7008, BTS
 | `cold_crank` | Starter engaged → bus sags to 7–9 V |
 | `thermal_coupling` | Die-neighbour heat injection — gentle temp rise |
 | `wake_transient` | SLEEP→ACTIVE inrush spike above nominal |
+| `ground_offset` | Corroded GND bond — V/I biased high (measurement offset) |
+| `short_to_ground` | Wire-to-chassis short — I spike + V collapse, protection trips |
 
 ### Multi-Cycle Drive Simulation
 
@@ -190,7 +193,7 @@ efuse_datagen/
 dashboard/
 └── app.py                    # Repo compatibility wrapper for the packaged dashboard
 docs/                         # Architecture, data model, configuration, and onboarding docs
-tests/                        # 31 pytest tests
+tests/                        # 92 pytest tests
 examples/
 └── quickstart.py             # Minimal end-to-end example
 ```
@@ -198,7 +201,7 @@ examples/
 ## Tests
 
 ```bash
-pytest                  # Run all 31 tests
+pytest                  # Run all 92 tests
 pytest -v               # Verbose
 pytest --cov=efuse_datagen  # With coverage
 ```

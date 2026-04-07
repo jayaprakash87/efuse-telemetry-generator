@@ -562,6 +562,13 @@ class TelemetryGenerator:
         power_states: list[PowerState],
         interval_s: float,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """Synthesise telemetry and labels for a single eFuse channel.
+
+        Applies the full 10-stage pipeline: nominal current + noise, inrush,
+        voltage drop, power-state gating, duty-cycle gating, fault waveforms,
+        thermal model, ISENSE chain, ADC quantization, and CAN signal packing.
+        Returns (telemetry_df, labels_df).
+        """
         n = len(timestamps)
 
         # --- Nominal baselines ---
