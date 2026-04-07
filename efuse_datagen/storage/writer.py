@@ -64,6 +64,8 @@ class StorageWriter:
                 "thermal_shutdown_c": ch.thermal_shutdown_c,
                 "harness_r_ohm": ch.harness_r_ohm,
                 "connector_r_ohm": ch.connector_r_ohm,
+                "wire_gauge_mm2": ch.wire_gauge_mm2,
+                "run_length_m": ch.run_length_m,
                 "die_id": ch.die_id,
                 "thermal_coupling_coeff": ch.thermal_coupling_coeff,
                 "duty_cycle": ch.duty_cycle,

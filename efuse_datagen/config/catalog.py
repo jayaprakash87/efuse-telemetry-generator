@@ -503,6 +503,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         specs.append(s)
 
     # ── Rear zone (25 channels) ──────────────────────────────────
+    # Physical context: ZC in rear trunk area, cabin ambient ~30 °C.
+    # Wire runs 0.3-3.5 m depending on load position relative to trunk ZC.
+
     # Seating comfort
     _add(
         "zone_rear",
@@ -510,6 +513,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "seat_adjust_rear",
         system_cluster="body_comfort",
         system_name="seat_adjustment",
+        # Motor behind seat, ~1.2 m from trunk ZC; 0.75 mm² for 11 A class
+        wire_gauge_mm2=0.75, run_length_m=1.2, harness_r_ohm=0.028, connector_r_ohm=0.012,
+        t_ambient_c=30.0, die_id="rear_die_A",
     )
     _add(
         "zone_rear",
@@ -522,6 +528,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         off_duration_s=30.0,
         system_cluster="body_comfort",
         system_name="seat_heating",
+        # PTC heater under seat cushion, 1.0 m; 0.75 mm² for 9 A
+        wire_gauge_mm2=0.75, run_length_m=1.0, harness_r_ohm=0.023, connector_r_ohm=0.010,
+        t_ambient_c=30.0, die_id="rear_die_A",
     )
     _add(
         "zone_rear",
@@ -533,6 +542,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         off_duration_s=30.0,
         system_cluster="body_comfort",
         system_name="seat_heating",
+        wire_gauge_mm2=0.75, run_length_m=1.0, harness_r_ohm=0.023, connector_r_ohm=0.010,
+        t_ambient_c=30.0, die_id="rear_die_A",
     )
     _add(
         "zone_rear",
@@ -545,6 +556,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         duty_cycle=0.30,
         system_cluster="body_comfort",
         system_name="seat_ventilation",
+        # Small motor under seat, 0.8 m; 0.5 mm² for 5 A class
+        wire_gauge_mm2=0.5, run_length_m=0.8, harness_r_ohm=0.028, connector_r_ohm=0.012,
+        t_ambient_c=30.0, die_id="rear_die_B",
     )
     _add(
         "zone_rear",
@@ -556,6 +570,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         off_duration_s=20.0,
         system_cluster="body_comfort",
         system_name="heated_surfaces",
+        wire_gauge_mm2=0.5, run_length_m=0.9, harness_r_ohm=0.031, connector_r_ohm=0.010,
+        t_ambient_c=30.0, die_id="rear_die_B",
     )
     # Infotainment
     _add(
@@ -565,6 +581,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         load_type="capacitive",
         system_cluster="infotainment",
         system_name="connectivity",
+        # Short run to centre console, 0.5 m; 0.35 mm²
+        wire_gauge_mm2=0.35, run_length_m=0.5, harness_r_ohm=0.025, connector_r_ohm=0.005,
+        t_ambient_c=30.0,
     )
     _add(
         "zone_rear",
@@ -573,6 +592,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         load_type="capacitive",
         system_cluster="infotainment",
         system_name="connectivity",
+        wire_gauge_mm2=0.35, run_length_m=0.5, harness_r_ohm=0.025, connector_r_ohm=0.005,
+        t_ambient_c=30.0,
     )
     _add(
         "zone_rear",
@@ -581,6 +602,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         load_type="capacitive",
         system_cluster="infotainment",
         system_name="media_interface",
+        wire_gauge_mm2=0.5, run_length_m=0.6, harness_r_ohm=0.021, connector_r_ohm=0.008,
+        t_ambient_c=30.0, die_id="rear_die_B",
     )
     # Exterior lighting
     _add(
@@ -592,6 +615,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_name="rear_lighting",
         pwm_capable=True,
         power_class="always_on",
+        # Long run to rear quarter panel, 2.5 m; 0.75 mm²; sealed connector
+        wire_gauge_mm2=0.75, run_length_m=2.5, harness_r_ohm=0.058, connector_r_ohm=0.015,
+        t_ambient_c=35.0, die_id="rear_die_C",
     )
     _add(
         "zone_rear",
@@ -602,6 +628,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_name="rear_lighting",
         pwm_capable=True,
         power_class="always_on",
+        wire_gauge_mm2=0.75, run_length_m=2.5, harness_r_ohm=0.058, connector_r_ohm=0.015,
+        t_ambient_c=35.0, die_id="rear_die_C",
     )
     _add(
         "zone_rear",
@@ -610,6 +638,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="exterior_lighting",
         system_name="rear_lighting",
         pwm_capable=True,
+        wire_gauge_mm2=0.5, run_length_m=1.8, harness_r_ohm=0.062, connector_r_ohm=0.012,
+        t_ambient_c=35.0,
     )
     _add(
         "zone_rear",
@@ -619,6 +649,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         pwm_capable=True,
         system_cluster="body_comfort",
         system_name="climate_support",
+        # Defroster grid on rear glass, 2.0 m; 0.75 mm² for 11 A
+        wire_gauge_mm2=0.75, run_length_m=2.0, harness_r_ohm=0.046, connector_r_ohm=0.015,
+        t_ambient_c=30.0, die_id="rear_die_C",
     )
     # Audio
     # Audio amps: powered when audio system is on; draw varies with volume.
@@ -630,6 +663,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         duty_cycle=0.70,
         system_cluster="infotainment",
         system_name="audio_system",
+        # Amp mounted in trunk area, 0.6 m; 1.0 mm² for 14 A class
+        wire_gauge_mm2=1.0, run_length_m=0.6, harness_r_ohm=0.010, connector_r_ohm=0.008,
+        t_ambient_c=30.0, die_id="rear_die_D",
     )
     _add(
         "zone_rear",
@@ -638,6 +674,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         duty_cycle=0.70,
         system_cluster="infotainment",
         system_name="audio_system",
+        wire_gauge_mm2=1.0, run_length_m=0.5, harness_r_ohm=0.009, connector_r_ohm=0.008,
+        t_ambient_c=30.0, die_id="rear_die_D",
     )
     # Energy / charging
     _add(
@@ -646,6 +684,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "charge_port_controller",
         system_cluster="energy_management",
         system_name="charging",
+        # Charge port in rear bumper, 3.0 m; 1.5 mm² for 18 A; sealed connector
+        wire_gauge_mm2=1.5, run_length_m=3.0, harness_r_ohm=0.035, connector_r_ohm=0.020,
+        t_ambient_c=35.0,
     )
     # Aux outlets: intermittently used — ~40 % duty (device charging)
     _add(
@@ -655,6 +696,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         duty_cycle=0.40,
         system_cluster="energy_management",
         system_name="auxiliary_power",
+        wire_gauge_mm2=0.5, run_length_m=0.4, harness_r_ohm=0.014, connector_r_ohm=0.008,
+        t_ambient_c=30.0,
     )
     _add(
         "zone_rear",
@@ -663,6 +706,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         duty_cycle=0.40,
         system_cluster="energy_management",
         system_name="auxiliary_power",
+        wire_gauge_mm2=0.5, run_length_m=0.4, harness_r_ohm=0.014, connector_r_ohm=0.008,
+        t_ambient_c=30.0,
     )
     # Drivetrain / chassis
     _add(
@@ -671,6 +716,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "rear_drive_inverter",
         system_cluster="drivetrain",
         system_name="electric_drive",
+        # High-current run to inverter, 3.5 m; 4.0 mm² for 28 A
+        wire_gauge_mm2=4.0, run_length_m=3.5, harness_r_ohm=0.015, connector_r_ohm=0.020,
+        t_ambient_c=45.0,
     )
     _add(
         "zone_rear",
@@ -685,6 +733,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="body_comfort",
         system_name="convenience_actuators",
         driver_type="h_bridge",
+        # Under-body mount, 2.8 m run; 4.0 mm²; sealed connector
+        wire_gauge_mm2=4.0, run_length_m=2.8, harness_r_ohm=0.012, connector_r_ohm=0.018,
+        t_ambient_c=40.0,
     )
     _add(
         "zone_rear",
@@ -694,20 +745,23 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         duty_cycle=0.60,
         system_cluster="drivetrain",
         system_name="rear_axle_steering",
+        # Actuator on rear axle, 3.0 m; 1.0 mm² for 14 A
+        wire_gauge_mm2=1.0, run_length_m=3.0, harness_r_ohm=0.052, connector_r_ohm=0.015,
+        t_ambient_c=45.0,
     )
     # ADAS
-    # Corner radars (77 GHz, e.g. Bosch MRR1Plus) draw 1–3 W via internal regulation;
-    # from the eFuse perspective they are constant-power resistive loads — NOT capacitive.
-    # They have soft-start internally, so no special inrush model is needed.
     _add(
         "zone_rear",
         "inf_hs_2a",
         "corner_radar_rear_left",
-        load_type="resistive",  # constant-power resistive; internal regulation
+        load_type="resistive",
         system_cluster="adas",
         system_name="surround_sensing",
-        power_class="always_on",  # ADAS sensing active even at low KL30 power
-        duty_cycle=1.0,  # continuously powered when ignition on
+        power_class="always_on",
+        duty_cycle=1.0,
+        # Radar in rear bumper, 2.2 m; 0.35 mm²
+        wire_gauge_mm2=0.35, run_length_m=2.2, harness_r_ohm=0.108, connector_r_ohm=0.015,
+        t_ambient_c=40.0,
     )
     _add(
         "zone_rear",
@@ -718,23 +772,22 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_name="surround_sensing",
         power_class="always_on",
         duty_cycle=1.0,
+        wire_gauge_mm2=0.35, run_length_m=2.2, harness_r_ohm=0.108, connector_r_ohm=0.015,
+        t_ambient_c=40.0,
     )
-    # Occupant safety — pyrotechnic squib continuity monitor
-    # Belt pretensioners are pyrotechnic squib loads driven by dedicated airbag ECU
-    # squib driver ICs (e.g. TLE4490). At the eFuse level the channel carries only
-    # a diagnostic continuity current (~1–5 mA). duty_cycle=0 means no active load
-    # current; nominal_current_a is set to near-zero to model the continuity check.
-    # The eFuse IC monitors for open-circuit (wire break) via the DIAGNOSIS cycle.
+    # Occupant safety
     _add(
         "zone_rear",
-        "inf_hs_2a",  # small IC sufficient for µA diagnostic leakage
-        "squib_monitor_left",  # renamed: this is a continuity monitor, not a driver
+        "inf_hs_2a",
+        "squib_monitor_left",
         load_type="resistive",
-        nominal_current_a=0.003,  # 3 mA continuity diagnostic current
-        duty_cycle=0.0,  # no active load; only DIAGNOSIS cycle leakage
+        nominal_current_a=0.003,
+        duty_cycle=0.0,
         system_cluster="occupant_safety",
         system_name="restraint_systems",
-        power_class="always_on",  # monitored even in SLEEP
+        power_class="always_on",
+        wire_gauge_mm2=0.35, run_length_m=1.5, harness_r_ohm=0.074, connector_r_ohm=0.005,
+        t_ambient_c=30.0,
     )
     _add(
         "zone_rear",
@@ -746,6 +799,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="occupant_safety",
         system_name="restraint_systems",
         power_class="always_on",
+        wire_gauge_mm2=0.35, run_length_m=1.5, harness_r_ohm=0.074, connector_r_ohm=0.005,
+        t_ambient_c=30.0,
     )
     # Suspension
     _add(
@@ -754,12 +809,16 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "active_damper_rear",
         system_cluster="drivetrain",
         system_name="active_suspension",
+        # Damper on rear axle, 3.2 m; 1.5 mm² for 18 A
+        wire_gauge_mm2=1.5, run_length_m=3.2, harness_r_ohm=0.037, connector_r_ohm=0.018,
+        t_ambient_c=45.0,
     )
 
     # ── Body zone (15 channels) ──────────────────────────────────
-    # Door modules
-    # Door locks: H-bridge motor, 400 ms actuation per lock/unlock event.
-    # In a 5-min scenario expect 1–2 events per door → on_duration ~0.4 s, off ~120 s
+    # Physical context: ZC behind instrument panel, ambient ~35 °C.
+    # Wire runs to doors 1.5-3.5 m; interior loads 0.3-1.5 m.
+
+    # Door modules — H-bridge motors for lock actuation
     _add(
         "zone_body",
         "inf_hs_11a",
@@ -772,6 +831,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="body_comfort",
         system_name="door_modules",
         driver_type="h_bridge",
+        # Door lock in front-left door, 2.0 m from body ZC; 0.75 mm²; sealed connector
+        wire_gauge_mm2=0.75, run_length_m=2.0, harness_r_ohm=0.046, connector_r_ohm=0.015,
+        t_ambient_c=35.0, die_id="body_die_A",
     )
     _add(
         "zone_body",
@@ -785,6 +847,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="body_comfort",
         system_name="door_modules",
         driver_type="h_bridge",
+        # Front-right door, 3.5 m (crosses vehicle); sealed connector
+        wire_gauge_mm2=0.75, run_length_m=3.5, harness_r_ohm=0.081, connector_r_ohm=0.015,
+        t_ambient_c=35.0, die_id="body_die_A",
     )
     _add(
         "zone_body",
@@ -798,6 +863,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="body_comfort",
         system_name="door_modules",
         driver_type="h_bridge",
+        # Rear-left door, 3.0 m; 0.75 mm²
+        wire_gauge_mm2=0.75, run_length_m=3.0, harness_r_ohm=0.069, connector_r_ohm=0.015,
+        t_ambient_c=35.0, die_id="body_die_B",
     )
     _add(
         "zone_body",
@@ -811,6 +879,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="body_comfort",
         system_name="door_modules",
         driver_type="h_bridge",
+        # Rear-right door, 4.5 m (longest run); 0.75 mm²
+        wire_gauge_mm2=0.75, run_length_m=4.5, harness_r_ohm=0.103, connector_r_ohm=0.018,
+        t_ambient_c=35.0, die_id="body_die_B",
     )
     _add(
         "zone_body",
@@ -819,6 +890,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="power_distribution",
         system_name="body_power",
         safety_level="asil_b",
+        # Short bus bar to fuse box, 0.3 m; 4.0 mm² for 28 A
+        wire_gauge_mm2=4.0, run_length_m=0.3, harness_r_ohm=0.001, connector_r_ohm=0.005,
+        t_ambient_c=35.0,
     )
     _add(
         "zone_body",
@@ -826,6 +900,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "keyless_entry_module",
         system_cluster="body_comfort",
         system_name="keyless_access",
+        # Module in B-pillar, 1.8 m; 1.0 mm²
+        wire_gauge_mm2=1.0, run_length_m=1.8, harness_r_ohm=0.031, connector_r_ohm=0.010,
+        t_ambient_c=35.0,
     )
     _add(
         "zone_body",
@@ -833,8 +910,10 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "immobilizer_relay",
         system_cluster="body_comfort",
         system_name="keyless_access",
+        wire_gauge_mm2=1.0, run_length_m=0.5, harness_r_ohm=0.009, connector_r_ohm=0.008,
+        t_ambient_c=35.0,
     )
-    # Infrastructure power
+    # Infrastructure power — heavy bus feeds, very short runs
     _add(
         "zone_body",
         "inf_hs_100a",
@@ -843,6 +922,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_name="infrastructure_power",
         safety_level="asil_b",
         power_class="always_on",
+        # Bus bar, 0.2 m; 25 mm² for 100 A class
+        wire_gauge_mm2=25.0, run_length_m=0.2, harness_r_ohm=0.0001, connector_r_ohm=0.003,
+        t_ambient_c=40.0, die_id="body_pdu_die",
     )
     _add(
         "zone_body",
@@ -851,6 +933,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="power_distribution",
         system_name="infrastructure_power",
         power_class="always_on",
+        wire_gauge_mm2=25.0, run_length_m=0.2, harness_r_ohm=0.0001, connector_r_ohm=0.003,
+        t_ambient_c=40.0, die_id="body_pdu_die",
     )
     # Cabin climate
     _add(
@@ -859,8 +943,10 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "hvac_blend_door",
         system_cluster="body_comfort",
         system_name="cabin_climate",
+        # HVAC servo under dash, 0.8 m; 0.75 mm²
+        wire_gauge_mm2=0.75, run_length_m=0.8, harness_r_ohm=0.018, connector_r_ohm=0.010,
+        t_ambient_c=40.0,
     )
-    # PTC cabin heater thermostat cycles: ~50 s ON / ~40 s OFF at setpoint
     _add(
         "zone_body",
         "inf_hs_18a",
@@ -871,6 +957,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         off_duration_s=40.0,
         system_cluster="body_comfort",
         system_name="cabin_climate",
+        # High-power PTC under dash, 1.0 m; 1.5 mm² for 18 A
+        wire_gauge_mm2=1.5, run_length_m=1.0, harness_r_ohm=0.012, connector_r_ohm=0.012,
+        t_ambient_c=45.0,
     )
     _add(
         "zone_body",
@@ -878,9 +967,10 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "cabin_air_quality_sensor",
         system_cluster="body_comfort",
         system_name="cabin_climate",
+        wire_gauge_mm2=0.35, run_length_m=0.6, harness_r_ohm=0.030, connector_r_ohm=0.005,
+        t_ambient_c=35.0,
     )
     # Body electronics
-    # Steering column heater: thermostat-cycled, ~35 s ON / 25 s OFF
     _add(
         "zone_body",
         "inf_hs_5a",
@@ -891,6 +981,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         off_duration_s=25.0,
         system_cluster="body_comfort",
         system_name="heated_surfaces",
+        wire_gauge_mm2=0.5, run_length_m=0.7, harness_r_ohm=0.024, connector_r_ohm=0.010,
+        t_ambient_c=35.0,
     )
     _add(
         "zone_body",
@@ -898,6 +990,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "rear_climate_panel",
         system_cluster="body_comfort",
         system_name="cabin_climate",
+        wire_gauge_mm2=0.5, run_length_m=2.5, harness_r_ohm=0.086, connector_r_ohm=0.010,
+        t_ambient_c=30.0,
     )
     _add(
         "zone_body",
@@ -905,10 +999,15 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "cooled_storage_compartment",
         system_cluster="body_comfort",
         system_name="convenience_features",
+        wire_gauge_mm2=0.35, run_length_m=0.8, harness_r_ohm=0.039, connector_r_ohm=0.008,
+        t_ambient_c=35.0,
     )
 
     # ── Front zone (15 channels) ─────────────────────────────────
-    # Infrastructure power
+    # Physical context: ZC near firewall, ambient ~65 °C (engine-bay proximity).
+    # Wire runs to underhood loads 0.5-2.5 m; cabin loads 0.8-2.0 m.
+
+    # Infrastructure power — heavy bus feeds
     _add(
         "zone_front",
         "inf_hs_100a",
@@ -917,6 +1016,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_name="infrastructure_power",
         safety_level="asil_b",
         power_class="always_on",
+        # Bus bar from battery junction, 0.3 m; 25 mm²
+        wire_gauge_mm2=25.0, run_length_m=0.3, harness_r_ohm=0.0002, connector_r_ohm=0.003,
+        t_ambient_c=65.0, die_id="front_pdu_die",
     )
     _add(
         "zone_front",
@@ -925,6 +1027,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="power_distribution",
         system_name="infrastructure_power",
         power_class="always_on",
+        wire_gauge_mm2=25.0, run_length_m=0.3, harness_r_ohm=0.0002, connector_r_ohm=0.003,
+        t_ambient_c=65.0, die_id="front_pdu_die",
     )
     # HVAC
     _add(
@@ -935,6 +1039,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         pwm_capable=True,
         system_cluster="body_comfort",
         system_name="cabin_climate",
+        # Underhood PTC near coolant loop, 1.5 m; 1.5 mm²
+        wire_gauge_mm2=1.5, run_length_m=1.5, harness_r_ohm=0.017, connector_r_ohm=0.015,
+        t_ambient_c=75.0,
     )
     _add(
         "zone_front",
@@ -946,6 +1053,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="body_comfort",
         system_name="cabin_climate",
         pwm_capable=True,
+        # Compressor on engine bay, 2.0 m; 10.0 mm² for 50 A; sealed weatherpack
+        wire_gauge_mm2=10.0, run_length_m=2.0, harness_r_ohm=0.003, connector_r_ohm=0.020,
+        t_ambient_c=80.0,
     )
     _add(
         "zone_front",
@@ -957,6 +1067,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="body_comfort",
         system_name="cabin_climate",
         pwm_capable=True,
+        # Blower behind dash, 0.8 m; 1.0 mm²
+        wire_gauge_mm2=1.0, run_length_m=0.8, harness_r_ohm=0.014, connector_r_ohm=0.010,
+        t_ambient_c=50.0,
     )
     # Suspension / chassis
     _add(
@@ -965,6 +1078,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "active_damper_front",
         system_cluster="drivetrain",
         system_name="active_suspension",
+        # Front strut, 2.5 m; 1.5 mm²; sealed
+        wire_gauge_mm2=1.5, run_length_m=2.5, harness_r_ohm=0.029, connector_r_ohm=0.018,
+        t_ambient_c=55.0,
     )
     _add(
         "zone_front",
@@ -973,9 +1089,10 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         load_type="capacitive",
         system_cluster="drivetrain",
         system_name="active_suspension",
+        wire_gauge_mm2=1.0, run_length_m=1.0, harness_r_ohm=0.017, connector_r_ohm=0.012,
+        t_ambient_c=55.0,
     )
-    # Seat comfort (front)
-    # Massage seats: occupant-activated, ~25 % duty (used occasionally)
+    # Seat comfort (front) — dual ICs share a die
     _add(
         "zone_front",
         "st_dual_14a",
@@ -983,6 +1100,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         duty_cycle=0.25,
         system_cluster="body_comfort",
         system_name="seat_comfort",
+        # Through-floor harness to front seat, 1.8 m; 1.0 mm²
+        wire_gauge_mm2=1.0, run_length_m=1.8, harness_r_ohm=0.031, connector_r_ohm=0.012,
+        t_ambient_c=35.0, die_id="front_seat_die_L",
     )
     _add(
         "zone_front",
@@ -991,6 +1111,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         duty_cycle=0.25,
         system_cluster="body_comfort",
         system_name="seat_comfort",
+        wire_gauge_mm2=1.0, run_length_m=2.5, harness_r_ohm=0.043, connector_r_ohm=0.012,
+        t_ambient_c=35.0, die_id="front_seat_die_R",
     )
     # Auxiliary loads / reserves
     _add(
@@ -999,6 +1121,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "aux_load_1",
         system_cluster="auxiliary",
         system_name="auxiliary_loads",
+        wire_gauge_mm2=0.5, run_length_m=1.5, harness_r_ohm=0.052, connector_r_ohm=0.010,
+        t_ambient_c=50.0,
     )
     _add(
         "zone_front",
@@ -1006,6 +1130,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "aux_load_2",
         system_cluster="auxiliary",
         system_name="auxiliary_loads",
+        wire_gauge_mm2=0.5, run_length_m=2.0, harness_r_ohm=0.069, connector_r_ohm=0.010,
+        t_ambient_c=50.0,
     )
     _add(
         "zone_front",
@@ -1013,6 +1139,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "aux_load_3",
         system_cluster="auxiliary",
         system_name="auxiliary_loads",
+        wire_gauge_mm2=0.5, run_length_m=2.5, harness_r_ohm=0.086, connector_r_ohm=0.012,
+        t_ambient_c=55.0,
     )
     # Body / access
     _add(
@@ -1021,6 +1149,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "pdu_cross_feed",
         system_cluster="power_distribution",
         system_name="body_power",
+        # Cross-feed bus to body ZC, 1.0 m; 1.0 mm²
+        wire_gauge_mm2=1.0, run_length_m=1.0, harness_r_ohm=0.017, connector_r_ohm=0.008,
+        t_ambient_c=55.0,
     )
     _add(
         "zone_front",
@@ -1029,6 +1160,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         load_type="capacitive",
         system_cluster="adas",
         system_name="tire_monitoring",
+        wire_gauge_mm2=0.35, run_length_m=1.2, harness_r_ohm=0.059, connector_r_ohm=0.008,
+        t_ambient_c=55.0,
     )
     _add(
         "zone_front",
@@ -1036,9 +1169,14 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "reserve_channel",
         system_cluster="auxiliary",
         system_name="auxiliary_loads",
+        wire_gauge_mm2=0.35, run_length_m=1.0, harness_r_ohm=0.049, connector_r_ohm=0.005,
+        t_ambient_c=50.0,
     )
 
     # ── Central zone (10 channels) ───────────────────────────────
+    # Physical context: ZC underhood near battery junction box, ambient ~75 °C.
+    # Power distribution feeds are short bus bars; loads reach trunk / cabin.
+
     # Sensors / misc
     _add(
         "zone_central",
@@ -1047,6 +1185,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         load_type="capacitive",
         system_cluster="body_comfort",
         system_name="sensor_modules",
+        wire_gauge_mm2=0.35, run_length_m=0.6, harness_r_ohm=0.030, connector_r_ohm=0.005,
+        t_ambient_c=75.0,
     )
     _add(
         "zone_central",
@@ -1058,6 +1198,9 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="body_comfort",
         system_name="closure_actuators",
         driver_type="h_bridge",
+        # Motor in tailgate, 4.0 m from underhood ZC; 4.0 mm²; sealed
+        wire_gauge_mm2=4.0, run_length_m=4.0, harness_r_ohm=0.017, connector_r_ohm=0.020,
+        t_ambient_c=40.0,
     )
     _add(
         "zone_central",
@@ -1066,8 +1209,10 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         pwm_capable=True,
         system_cluster="interior_lighting",
         system_name="cabin_lights",
+        wire_gauge_mm2=0.35, run_length_m=2.5, harness_r_ohm=0.123, connector_r_ohm=0.008,
+        t_ambient_c=30.0,
     )
-    # Power distribution
+    # Power distribution — heavy bus bars
     _add(
         "zone_central",
         "inf_hs_100a",
@@ -1076,6 +1221,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_name="main_bus",
         safety_level="asil_b",
         power_class="always_on",
+        wire_gauge_mm2=25.0, run_length_m=0.15, harness_r_ohm=0.0001, connector_r_ohm=0.002,
+        t_ambient_c=75.0, die_id="central_pdu_die",
     )
     _add(
         "zone_central",
@@ -1084,6 +1231,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="power_distribution",
         system_name="main_bus",
         power_class="always_on",
+        wire_gauge_mm2=25.0, run_length_m=0.15, harness_r_ohm=0.0001, connector_r_ohm=0.002,
+        t_ambient_c=75.0, die_id="central_pdu_die",
     )
     # Infrastructure feeds
     _add(
@@ -1094,6 +1243,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_name="infrastructure_power",
         safety_level="asil_b",
         power_class="always_on",
+        wire_gauge_mm2=25.0, run_length_m=0.2, harness_r_ohm=0.0001, connector_r_ohm=0.003,
+        t_ambient_c=75.0, die_id="central_pdu_die",
     )
     _add(
         "zone_central",
@@ -1102,14 +1253,18 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         system_cluster="power_distribution",
         system_name="infrastructure_power",
         power_class="always_on",
+        wire_gauge_mm2=25.0, run_length_m=0.2, harness_r_ohm=0.0001, connector_r_ohm=0.003,
+        t_ambient_c=75.0, die_id="central_pdu_die",
     )
-    # Reserves
+    # Reserves — mid-range auxiliary channels with longer runs
     _add(
         "zone_central",
         "inf_hs_5a",
         "reserve_1",
         system_cluster="auxiliary",
         system_name="auxiliary_loads",
+        wire_gauge_mm2=0.5, run_length_m=2.0, harness_r_ohm=0.069, connector_r_ohm=0.010,
+        t_ambient_c=60.0,
     )
     _add(
         "zone_central",
@@ -1117,6 +1272,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "reserve_2",
         system_cluster="auxiliary",
         system_name="auxiliary_loads",
+        wire_gauge_mm2=0.5, run_length_m=3.0, harness_r_ohm=0.103, connector_r_ohm=0.012,
+        t_ambient_c=60.0,
     )
     _add(
         "zone_central",
@@ -1124,6 +1281,8 @@ def example_topology() -> tuple[list[ZoneController], list[dict]]:
         "reserve_3",
         system_cluster="auxiliary",
         system_name="auxiliary_loads",
+        wire_gauge_mm2=0.5, run_length_m=4.0, harness_r_ohm=0.138, connector_r_ohm=0.015,
+        t_ambient_c=55.0,
     )
 
     assert _ch == 65, f"Expected 65 channels, got {_ch}"

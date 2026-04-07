@@ -576,6 +576,23 @@ class ChannelMeta(BaseModel):
     # Pin/terminal contact resistance: fresh crimp 5–10 mΩ, corroded/fretting 50–500 mΩ.
     # Both appear as a series resistance between the eFuse output and the load, causing
     # a measurable voltage drop V_drop = I × (R_harness + R_connector).
+    #
+    # Wire gauge and run length are the physical design inputs.  Together with
+    # copper resistivity (17.24 nΩ·m @ 20 °C) they determine the theoretical
+    # harness resistance: R = ρ × L / A.  The actual harness_r_ohm may be
+    # higher (e.g. crimps, splices, temperature) and is the value used for
+    # simulation.  Keeping both lets the analysis compare as-designed vs
+    # as-simulated and recommend gauge/length changes.
+    wire_gauge_mm2: float = Field(
+        default=0.5,
+        gt=0.0,
+        description="Wire cross-section in mm² (IEC 60228 sizes: 0.35, 0.5, 0.75, 1.0, 1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0)",
+    )
+    run_length_m: float = Field(
+        default=1.0,
+        gt=0.0,
+        description="One-way wire run length in metres from ZC connector to load (typ. 0.3–5.0 m)",
+    )
     harness_r_ohm: float = Field(
         default=0.020,
         description="Wire harness resistance Ω from eFuse output to load (typ. 20–100 mΩ)",
