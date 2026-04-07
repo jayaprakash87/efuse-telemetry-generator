@@ -6,7 +6,7 @@ Supports single-cycle quick runs and **month-long multi-cycle drive simulations*
 
 The package is distributed as a **full runtime package**: library, CLI, built-in sample configs, and dashboard launcher.
 
-> **Documentation:** See [`docs/`](docs/) for architecture deep-dive, data model reference, configuration guide, onboarding materials, and [**eFuse domain reference**](docs/domain-reference.md) (for hardware engineers).
+> **Documentation:** See [`docs/`](docs/) for architecture deep-dive, data model reference, configuration guide, onboarding materials, [**eFuse domain reference**](docs/domain-reference.md) (for hardware engineers), [**signal-chain one-pager**](docs/signal-chain-one-pager.md) (for stakeholders), and [**use-case library**](docs/use-cases/README.md).
 
 ## What It Generates
 
