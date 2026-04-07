@@ -681,6 +681,12 @@ class TelemetryGenerator:
             # Guard: skip fault if channel is unpowered at the fault start sample.
             # (e.g. fault at t=10s but channel is IGNITION and vehicle is in SLEEP)
             if not state[start_idx]:
+                log.warning(
+                    "Fault '%s' on %s suppressed — channel unpowered at t=%.1fs",
+                    fi.fault_type.value,
+                    ch.channel_id,
+                    fi.start_s,
+                )
                 continue
 
             sl = slice(start_idx, end_idx)

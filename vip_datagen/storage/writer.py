@@ -39,6 +39,31 @@ class StorageWriter:
     def write_scored(self, df: pd.DataFrame, name: str = "scored") -> Path:
         return self._write_df(df, name)
 
+    def write_channel_manifest(self, channels: list, name: str = "channel_manifest") -> Path | None:
+        """Write per-channel static metadata so the dashboard can display zone/load info."""
+        if not channels:
+            return None
+        rows = [
+            {
+                "channel_id": ch.channel_id,
+                "zone_id": ch.zone_id,
+                "load_name": ch.load_name,
+                "system_cluster": ch.system_cluster,
+                "system_name": ch.system_name,
+                "efuse_family": ch.efuse_family.value if hasattr(ch.efuse_family, "value") else str(ch.efuse_family),
+                "load_type": ch.load_type,
+                "power_class": ch.power_class.value if hasattr(ch.power_class, "value") else str(ch.power_class),
+                "nominal_current_a": ch.nominal_current_a,
+                "max_current_a": ch.max_current_a,
+                "duty_cycle": ch.duty_cycle,
+                "on_duration_s": ch.on_duration_s,
+                "off_duration_s": ch.off_duration_s,
+            }
+            for ch in channels
+        ]
+        df = pd.DataFrame(rows)
+        return self._write_df(df, name)
+
     def check_disk_space(self) -> bool:
         """Return True if disk has enough free space (or threshold is 0)."""
         if self._disk_min_free_mb <= 0:

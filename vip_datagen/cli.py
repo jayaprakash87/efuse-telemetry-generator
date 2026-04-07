@@ -142,6 +142,7 @@ def generate(
     writer.write_features(features_df)
     if not labels_df.empty:
         writer.write_labels(labels_df)
+    writer.write_channel_manifest(sim_cfg.channels)
 
     # 4. Save config snapshot
     config_snapshot = out_dir / "config.yaml"
