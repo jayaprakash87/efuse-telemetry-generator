@@ -74,7 +74,7 @@ def generate(
         "parquet",
         "--format",
         "-f",
-        help="Output format: parquet or csv.",
+        help="Output format: parquet, csv, or json.",
     ),
     duration: Optional[float] = typer.Option(
         None,
@@ -130,8 +130,48 @@ def generate(
     configure_logging(json_format=json_log)
     log = get_logger(__name__)
 
+    # ── CLI input validation ─────────────────────────────────────
+    _VALID_FORMATS = {"parquet", "csv", "json"}
+    if fmt not in _VALID_FORMATS:
+        raise typer.BadParameter(
+            f"Invalid format '{fmt}'. Choose from: {', '.join(sorted(_VALID_FORMATS))}."
+        )
+    if duration is not None and duration <= 0:
+        raise typer.BadParameter("--duration must be > 0.")
+    if seed is not None and seed < 0:
+        raise typer.BadParameter("--seed must be >= 0.")
+    if n_vehicles is not None and n_vehicles < 1:
+        raise typer.BadParameter("--vehicles must be >= 1.")
+    if duration_days is not None and duration_days < 1:
+        raise typer.BadParameter("--days must be >= 1.")
+    if max_workers is not None and max_workers < 1:
+        raise typer.BadParameter("--workers must be >= 1.")
+
     # Load config
     cfg, config_name = _load_requested_config(config)
+
+    # Warn about mode-mismatched flags
+    is_fleet = cfg.fleet is not None
+    if is_fleet and duration is not None:
+        console.print(
+            "[yellow]⚠ --duration is ignored in fleet mode "
+            "(use --days for fleet duration).[/yellow]"
+        )
+    if not is_fleet:
+        fleet_flags = []
+        if n_vehicles is not None:
+            fleet_flags.append("--vehicles")
+        if duration_days is not None:
+            fleet_flags.append("--days")
+        if max_workers is not None:
+            fleet_flags.append("--workers")
+        if write_combined:
+            fleet_flags.append("--combined")
+        if fleet_flags:
+            console.print(
+                f"[yellow]⚠ {', '.join(fleet_flags)} ignored in single-vehicle mode "
+                f"(requires a fleet config).[/yellow]"
+            )
 
     # Route to fleet mode if config has fleet section
     if cfg.fleet is not None:
