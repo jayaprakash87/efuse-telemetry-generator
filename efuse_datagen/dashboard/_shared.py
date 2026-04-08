@@ -92,10 +92,31 @@ def render_data_source_banner(run_dir: str) -> None:
 @st.cache_data(show_spinner=False)
 def load_run(run_dir: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     p = Path(run_dir)
-    tel = pd.read_parquet(p / "telemetry.parquet")
+
+    tel_path = p / "telemetry.parquet"
+    if not tel_path.exists():
+        st.error(f"Missing telemetry.parquet in {p.name}")
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+    try:
+        tel = pd.read_parquet(tel_path)
+    except Exception as exc:
+        st.error(f"Failed to read telemetry.parquet: {exc}")
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
+    _REQUIRED_TEL_COLS = {"timestamp", "channel_id", "current_a"}
+    missing = _REQUIRED_TEL_COLS - set(tel.columns)
+    if missing:
+        st.error(f"Telemetry missing required columns: {sorted(missing)}")
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
     feat = pd.read_parquet(p / "features.parquet") if (p / "features.parquet").exists() else pd.DataFrame()
     if (p / "labels.parquet").exists():
-        lab = pd.read_parquet(p / "labels.parquet")
+        try:
+            lab = pd.read_parquet(p / "labels.parquet")
+        except Exception:
+            lab = pd.DataFrame(columns=[
+                "timestamp", "channel_id", "fault_type", "severity", "description",
+            ])
     else:
         # Empty labels with expected schema so downstream code doesn't KeyError
         lab = pd.DataFrame(columns=[

@@ -22,7 +22,6 @@ from __future__ import annotations
 import multiprocessing
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import typer
 import yaml
@@ -53,7 +52,7 @@ console = Console()
 @app.callback(invoke_without_command=True)
 def generate(
     ctx: typer.Context,
-    config: Optional[str] = typer.Option(
+    config: str | None = typer.Option(
         None,
         "--config",
         "-c",
@@ -76,31 +75,31 @@ def generate(
         "-f",
         help="Output format: parquet, csv, or json.",
     ),
-    duration: Optional[float] = typer.Option(
+    duration: float | None = typer.Option(
         None,
         "--duration",
         "-d",
         help="Override scenario duration in seconds (single-vehicle mode).",
     ),
-    seed: Optional[int] = typer.Option(
+    seed: int | None = typer.Option(
         None,
         "--seed",
         "-s",
         help="Override random seed for reproducibility.",
     ),
     # Fleet-specific options (only used when config has fleet: key)
-    n_vehicles: Optional[int] = typer.Option(
+    n_vehicles: int | None = typer.Option(
         None,
         "--vehicles",
         "-n",
         help="Override fleet vehicle count (fleet mode only).",
     ),
-    duration_days: Optional[int] = typer.Option(
+    duration_days: int | None = typer.Option(
         None,
         "--days",
         help="Override fleet duration in days (fleet mode only).",
     ),
-    max_workers: Optional[int] = typer.Option(
+    max_workers: int | None = typer.Option(
         None,
         "--workers",
         "-w",
@@ -438,7 +437,7 @@ def ingest(
         "--output", "-o",
         help="Root directory for ingested runs.",
     ),
-    column_map: Optional[str] = typer.Option(
+    column_map: str | None = typer.Option(
         None,
         "--map", "-m",
         help="Column mapping as key=value pairs, e.g. 'I_ch01=current_a,U_bat=voltage_v,T_junc=temperature_c'.",
@@ -448,7 +447,7 @@ def ingest(
         "--time-col",
         help="Name of the timestamp column in the source file.",
     ),
-    channel_id: Optional[str] = typer.Option(
+    channel_id: str | None = typer.Option(
         None,
         "--channel",
         help="Override channel_id (default: derive from filename).",

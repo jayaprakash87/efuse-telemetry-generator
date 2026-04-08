@@ -270,6 +270,7 @@ def _generate_vehicle(args: tuple) -> dict:
         start_date,
         out_dir,
         feat_cfg_dict,
+        run_id,
     ) = args
 
     try:
@@ -279,6 +280,9 @@ def _generate_vehicle(args: tuple) -> dict:
         from efuse_datagen.features.engine import FeatureEngine
         from efuse_datagen.simulation.drive_cycles import DriveCyclePlanner, generate_multi_cycle
         from efuse_datagen.storage.writer import StorageWriter
+
+        log.info("[%s] Starting vehicle %s (archetype=%s, region=%s)",
+                 run_id, spec.vehicle_id, spec.archetype_id, spec.region)
 
         sim_cfg = build_vehicle_sim_config(spec, fleet_cfg, base_sim, regional_weather_df, start_date)
         feat_cfg = FeatureConfig.model_validate(feat_cfg_dict)
@@ -296,6 +300,7 @@ def _generate_vehicle(args: tuple) -> dict:
         telem_df, labels_df = generate_multi_cycle(sim_cfg, cycles, faults_per_cycle)
 
         if telem_df.empty:
+            log.warning("[%s] Vehicle %s produced empty telemetry", run_id, spec.vehicle_id)
             return {"vehicle_id": spec.vehicle_id, "status": "empty", "n_rows": 0}
 
         # Tag vehicle
@@ -333,7 +338,7 @@ def _generate_vehicle(args: tuple) -> dict:
         }
 
     except Exception as exc:  # noqa: BLE001
-        log.error("Vehicle %s failed: %s", spec.vehicle_id, exc, exc_info=True)
+        log.error("[%s] Vehicle %s failed: %s", run_id, spec.vehicle_id, exc, exc_info=True)
         return {"vehicle_id": spec.vehicle_id, "status": f"error: {exc}", "n_rows": 0}
 
 
@@ -427,7 +432,9 @@ class FleetRunner:
                 region_weather.get(spec.region, list(region_weather.values())[0]),
                 start_date,
                 str(out_dir),
+                str(out_dir),
                 feat_cfg_dict,
+                run_id,
             )
             for spec in specs
         ]

@@ -116,12 +116,16 @@ class MeasurementAdapter:
         suffix = path.suffix.lower()
 
         if suffix in (".csv", ".tsv"):
+            log.debug("Detected format: CSV/TSV (%s)", suffix)
             raw = self._read_csv(path, **read_kwargs)
         elif suffix == ".parquet":
+            log.debug("Detected format: Parquet")
             raw = pd.read_parquet(path, **read_kwargs)
         elif suffix in (".mdf", ".mf4"):
+            log.debug("Detected format: MDF/MF4 (requires asammdf)")
             raw = self._read_mdf(path, **read_kwargs)
         elif suffix in (".blf", ".asc"):
+            log.debug("Detected format: CAN log %s (requires python-can)", suffix)
             raw = self._read_can_log(path, **read_kwargs)
         else:
             raise ValueError(f"Unsupported file format: {suffix}")
@@ -200,7 +204,8 @@ class MeasurementAdapter:
             raise ImportError(
                 "Reading MDF/MF4 files requires the 'asammdf' package. "
                 "Install it with: pip install asammdf"
-            )
+            ) from None
+        log.debug("Reading MDF file: %s", path.name)
         mdf = MDF(str(path))
         return mdf.to_dataframe(**kwargs)
 
@@ -212,7 +217,7 @@ class MeasurementAdapter:
             raise ImportError(
                 "Reading BLF/ASC CAN logs requires the 'python-can' package. "
                 "Install it with: pip install python-can"
-            )
+            ) from None
 
         dbc_path = kwargs.pop("dbc", None)
         db = None
@@ -224,7 +229,7 @@ class MeasurementAdapter:
                 raise ImportError(
                     "Decoding CAN signals requires the 'cantools' package. "
                     "Install it with: pip install cantools"
-                )
+                ) from None
 
         suffix = path.suffix.lower()
         reader_cls = can.BLFReader if suffix == ".blf" else can.ASCReader

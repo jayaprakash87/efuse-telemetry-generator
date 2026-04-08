@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from typing import Optional
-
 import yaml
 from pydantic import BaseModel, Field, model_validator
 
@@ -393,7 +391,7 @@ class GeneratorConfig(BaseModel):
     simulation: SimulationConfig = Field(default_factory=SimulationConfig)
     features: FeatureConfig = Field(default_factory=FeatureConfig)
     storage: StorageConfig = Field(default_factory=StorageConfig)
-    fleet: Optional[FleetConfig] = Field(
+    fleet: FleetConfig | None = Field(
         default=None,
         description="Fleet settings — when present, activates multi-vehicle fleet mode.",
     )
