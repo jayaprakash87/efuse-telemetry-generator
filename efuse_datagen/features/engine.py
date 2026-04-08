@@ -48,7 +48,7 @@ class FeatureEngine:
         # Rolling current statistics
         df["rolling_rms_current"] = grouped["current_a"].transform(
             lambda s: (s**2).rolling(w, min_periods=mp).mean().pipe(np.sqrt)
-        )
+        ).bfill().clip(lower=0)
         df["rolling_mean_current"] = grouped["current_a"].transform(
             lambda s: s.rolling(w, min_periods=mp).mean()
         )
@@ -59,15 +59,20 @@ class FeatureEngine:
             lambda s: s.rolling(w, min_periods=mp).min()
         )
 
-        # Temperature slope (finite difference over window)
+        # Temperature slope (smoothed finite difference over window)
         df["temperature_slope"] = grouped["temperature_c"].transform(
-            lambda s: s.diff(periods=w).fillna(0) / max(w, 1)
+            lambda s: s.rolling(max(w // 2, 1), min_periods=1).mean()
+            .diff(periods=w)
+            .fillna(0)
+            / max(w, 1)
         )
 
         # Spike score — how many σ above rolling mean
         roll_mean = grouped["current_a"].transform(lambda s: s.rolling(w, min_periods=mp).mean())
         roll_std = grouped["current_a"].transform(lambda s: s.rolling(w, min_periods=mp).std())
-        df["spike_score"] = ((df["current_a"] - roll_mean) / roll_std.replace(0, 1)).clip(lower=0)
+        df["spike_score"] = (
+            (df["current_a"] - roll_mean) / roll_std.replace(0, 1)
+        ).clip(lower=0, upper=20).fillna(0)
 
         # Trip frequency — rolling sum of trip_flag transitions
         df["_trip_edge"] = grouped["trip_flag"].transform(
