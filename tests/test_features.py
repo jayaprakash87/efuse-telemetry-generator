@@ -1,6 +1,5 @@
 """Tests for efuse_datagen.features.engine – FeatureEngine."""
 
-import numpy as np
 import pandas as pd
 
 from efuse_datagen.features.engine import FeatureEngine

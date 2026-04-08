@@ -1,6 +1,5 @@
 """Tests for CLI input validation — format, range checks, mode-mismatch warnings."""
 
-import pytest
 from typer.testing import CliRunner
 
 from efuse_datagen.cli import app

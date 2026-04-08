@@ -1,6 +1,5 @@
 """Tests for IC current-limiting (I_CL) before F(i,t) trip."""
 
-import numpy as np
 
 from efuse_datagen.schemas.telemetry import (
     ChannelMeta,

@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
 
-from efuse_datagen.dashboard._shared import FAULT_PALETTE, build_fault_shapes
+from efuse_datagen.dashboard._shared import build_fault_shapes
 
 
 def render(

@@ -1,6 +1,5 @@
 """Tests for ground-offset and short-to-ground faults (P1 hardware realism)."""
 
-import numpy as np
 import pandas as pd
 
 from efuse_datagen.schemas.telemetry import (

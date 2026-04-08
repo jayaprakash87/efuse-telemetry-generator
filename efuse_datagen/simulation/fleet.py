@@ -42,7 +42,7 @@ from __future__ import annotations
 import concurrent.futures
 import math
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -51,10 +51,7 @@ import pandas as pd
 import yaml
 
 from efuse_datagen.config.models import (
-    DriveCycleConfig,
-    FeatureConfig,
     FleetConfig,
-    FaultRateConfig,
     GeneratorConfig,
     RegionalWeatherConfig,
     SimulationConfig,

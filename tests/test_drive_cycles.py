@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from efuse_datagen.config.models import DriveCycleConfig, SimulationConfig
-from efuse_datagen.schemas.telemetry import ChannelMeta, FaultType, PowerClass
+from efuse_datagen.schemas.telemetry import ChannelMeta, PowerClass
 from efuse_datagen.simulation.drive_cycles import (
     DriveCycleEvent,
     DriveCyclePlanner,
