@@ -1,6 +1,7 @@
 """Streamlit dashboard for eFuse Telemetry Generator outputs.
 
 Slim orchestrator — each tab lives in ``efuse_datagen.dashboard.tabs.*``.
+Supports both single-vehicle and fleet runs.
 
 Launch via the ``efuse-dashboard`` entry point or ``dashboard/app.py``.
 """
@@ -12,9 +13,14 @@ from pathlib import Path
 import streamlit as st
 
 from efuse_datagen.dashboard._shared import (
+    is_fleet_run,
+    list_fleet_vehicles,
     list_runs,
     load_drive_cycles,
+    load_fleet_manifest,
+    load_fleet_vehicle,
     load_manifest,
+    load_regional_weather,
     load_run,
     render_data_source_banner,
 )
@@ -46,14 +52,60 @@ if not runs:
     )
     st.stop()
 
-selected_run = st.sidebar.selectbox("Output run", runs, index=0, format_func=lambda p: Path(p).name)
-render_data_source_banner(selected_run)
 
-tel, feat, lab = load_run(selected_run)
-manifest = load_manifest(selected_run)
-dc_df = load_drive_cycles(selected_run)
+def _run_display_name(p: str) -> str:
+    name = Path(p).name
+    if is_fleet_run(p):
+        return f"🚛 {name}"
+    return name
 
+
+selected_run = st.sidebar.selectbox("Output run", runs, index=0, format_func=_run_display_name)
+
+fleet_mode = is_fleet_run(selected_run)
+
+# ---------------------------------------------------------------------------
+# Fleet run — vehicle selector & fleet-level data
+# ---------------------------------------------------------------------------
+
+fleet_manifest = None
+fleet_weather = None
+selected_vehicle = None
+
+if fleet_mode:
+    st.sidebar.info("🚛 Fleet run")
+    fleet_manifest = load_fleet_manifest(selected_run)
+    fleet_weather = load_regional_weather(selected_run)
+
+    vehicles = list_fleet_vehicles(selected_run)
+    if not vehicles:
+        st.error("Fleet run has no vehicle directories.")
+        st.stop()
+
+    selected_vehicle = st.sidebar.selectbox(
+        "Vehicle",
+        vehicles,
+        index=0,
+        format_func=lambda v: (
+            f"{v} — {fleet_manifest.loc[fleet_manifest['vehicle_id'] == v, 'archetype_id'].values[0]}"
+            if v in fleet_manifest["vehicle_id"].values
+            else v
+        ),
+    )
+    # Load the selected vehicle's data
+    tel, feat, lab = load_fleet_vehicle(selected_run, selected_vehicle)
+    manifest = load_manifest(str(Path(selected_run) / "vehicles" / selected_vehicle))
+    dc_df = load_drive_cycles(str(Path(selected_run) / "vehicles" / selected_vehicle))
+else:
+    render_data_source_banner(selected_run)
+    tel, feat, lab = load_run(selected_run)
+    manifest = load_manifest(selected_run)
+    dc_df = load_drive_cycles(selected_run)
+
+# ---------------------------------------------------------------------------
 # Drive cycle filter (multi-cycle runs only)
+# ---------------------------------------------------------------------------
+
 is_multi_cycle = "drive_cycle_id" in tel.columns and dc_df is not None
 if is_multi_cycle:
     _day_opts = sorted(dc_df["day"].unique().tolist())
@@ -66,11 +118,15 @@ if is_multi_cycle:
     )
     _cycle_ids = set(dc_df[dc_df["day"].isin(sel_days)]["cycle_id"].tolist())
     tel = tel[tel["drive_cycle_id"].isin(_cycle_ids)]
-    feat = feat[feat["drive_cycle_id"].isin(_cycle_ids)]
-    if "drive_cycle_id" in lab.columns:
+    if not feat.empty and "drive_cycle_id" in feat.columns:
+        feat = feat[feat["drive_cycle_id"].isin(_cycle_ids)]
+    if not lab.empty and "drive_cycle_id" in lab.columns:
         lab = lab[lab["drive_cycle_id"].isin(_cycle_ids)]
 
-# Zone filter
+# ---------------------------------------------------------------------------
+# Zone + channel filter
+# ---------------------------------------------------------------------------
+
 if manifest is not None:
     all_zones = sorted(manifest["zone_id"].dropna().unique().tolist())
     sel_zones = st.sidebar.multiselect("Zone filter", all_zones, default=all_zones)
@@ -95,7 +151,11 @@ if not selected_channels:
     st.stop()
 
 st.sidebar.markdown("---")
-st.sidebar.caption(f"Run: `{Path(selected_run).name}`")
+if fleet_mode and selected_vehicle:
+    st.sidebar.caption(f"Fleet: `{Path(selected_run).name}`")
+    st.sidebar.caption(f"Vehicle: `{selected_vehicle}`")
+else:
+    st.sidebar.caption(f"Run: `{Path(selected_run).name}`")
 st.sidebar.caption(f"Samples: {len(tel):,} | Channels: {len(channels)}")
 
 # ---------------------------------------------------------------------------
@@ -110,31 +170,43 @@ ctx = dict(
     selected_run=selected_run,
     label_map=label_map,
     is_multi_cycle=is_multi_cycle,
+    fleet_mode=fleet_mode,
+    fleet_manifest=fleet_manifest,
+    fleet_weather=fleet_weather,
+    selected_vehicle=selected_vehicle,
 )
 
 # ---------------------------------------------------------------------------
 # Tabs
 # ---------------------------------------------------------------------------
 
-tab_overview, tab_signals, tab_features, tab_protection, tab_config = st.tabs([
-    "📊 Overview",
-    "📡 Signals",
-    "🔬 Features",
-    "🛡️ Fault & Protection",
-    "📋 Config",
-])
+tab_labels = ["📊 Overview", "📡 Signals", "🔬 Features", "🛡️ Fault & Protection", "📋 Config"]
+if fleet_mode:
+    tab_labels.insert(0, "🚛 Fleet")
 
-with tab_overview:
+tabs = st.tabs(tab_labels)
+tab_idx = 0
+
+if fleet_mode:
+    with tabs[tab_idx]:
+        overview.render_fleet(**ctx)
+    tab_idx += 1
+
+with tabs[tab_idx]:
     overview.render(**ctx)
+tab_idx += 1
 
-with tab_signals:
+with tabs[tab_idx]:
     signals.render(**ctx)
+tab_idx += 1
 
-with tab_features:
+with tabs[tab_idx]:
     features.render(**ctx)
+tab_idx += 1
 
-with tab_protection:
+with tabs[tab_idx]:
     protection.render(**ctx)
+tab_idx += 1
 
-with tab_config:
+with tabs[tab_idx]:
     config.render(**ctx)

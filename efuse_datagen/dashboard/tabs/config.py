@@ -23,17 +23,34 @@ def render(
     with col_l:
         st.subheader("Run Info")
         run_name = Path(selected_run).name
-        st.markdown(f"**Run ID:** `{run_name}`")
+        fleet_mode = kw.get("fleet_mode", False)
+        selected_vehicle = kw.get("selected_vehicle")
+
+        if fleet_mode and selected_vehicle:
+            st.markdown(f"**Fleet Run:** `{run_name}`")
+            st.markdown(f"**Vehicle:** `{selected_vehicle}`")
+        else:
+            st.markdown(f"**Run ID:** `{run_name}`")
         st.markdown(f"**Samples:** {len(tel):,}")
         st.markdown(f"**Channels:** {len(channels)}")
         duration_s = (tel["timestamp"].max() - tel["timestamp"].min()).total_seconds()
         st.markdown(f"**Duration:** {duration_s:.0f} s")
 
-        config_path = Path(selected_run) / "config.yaml"
-        if config_path.exists():
+        # Show config YAML — check per-vehicle path first for fleet, then fleet_config, then config
+        config_path = None
+        if fleet_mode and selected_vehicle:
+            _v_cfg = Path(selected_run) / "vehicles" / selected_vehicle / "config.yaml"
+            if _v_cfg.exists():
+                config_path = _v_cfg
+        if config_path is None:
+            for name in ("fleet_config.yaml", "config.yaml"):
+                _candidate = Path(selected_run) / name
+                if _candidate.exists():
+                    config_path = _candidate
+                    break
+        if config_path is not None:
             st.subheader("Config YAML")
-            _yaml_text = config_path.read_text()
-            st.code(_yaml_text, language="yaml")
+            st.code(config_path.read_text(), language="yaml")
 
     with col_r:
         st.subheader("Channel Inventory")
