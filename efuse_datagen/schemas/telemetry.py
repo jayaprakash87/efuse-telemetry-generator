@@ -21,7 +21,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, Field, field_serializer, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -414,6 +414,8 @@ class ChannelMeta(BaseModel):
     channel's eFuse registers via SPI and publishes the measured signals.
     """
 
+    model_config = {"validate_default": True}
+
     channel_id: str = Field(description="Unique logical channel identifier, e.g. 'ch_01'")
     load_name: str = Field(default="", description="Human-readable load name shown in configs and the dashboard")
     nominal_current_a: float = Field(default=5.0, description="Expected steady-state load current in amps")
@@ -688,6 +690,15 @@ class ChannelMeta(BaseModel):
         ge=0.0,
         description="Duration of wake inrush in ms (typ. 20–200 ms for capacitive/relay loads)",
     )
+
+    @model_validator(mode="after")
+    def _check_current_limits(self) -> ChannelMeta:
+        if self.nominal_current_a >= self.max_current_a:
+            raise ValueError(
+                f"nominal_current_a ({self.nominal_current_a}) must be < "
+                f"max_current_a ({self.max_current_a})"
+            )
+        return self
 
 
 class FaultInjection(BaseModel):

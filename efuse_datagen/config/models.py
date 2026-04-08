@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from efuse_datagen.schemas.telemetry import ChannelMeta, FaultInjection, PowerState, ZoneController
 
@@ -89,6 +89,15 @@ class DriveCycleConfig(BaseModel):
     ambient_temp_std_c: float = Field(default=8.0, ge=0, description="Day-to-day σ °C")
     fault_rates: FaultRateConfig = Field(default_factory=FaultRateConfig)
 
+    @model_validator(mode="after")
+    def _check_trip_bounds(self) -> DriveCycleConfig:
+        if self.min_trip_minutes >= self.max_trip_minutes:
+            raise ValueError(
+                f"min_trip_minutes ({self.min_trip_minutes}) must be < "
+                f"max_trip_minutes ({self.max_trip_minutes})"
+            )
+        return self
+
 
 class SimulationConfig(BaseModel):
     """Core scenario definition: channels, faults, power states, and drive cycle settings."""
@@ -157,6 +166,18 @@ class FeatureConfig(BaseModel):
     min_periods: int = Field(
         default=0, description="Override: fixed min_periods (0=auto from duration)"
     )
+
+    @model_validator(mode="after")
+    def _check_window_bounds(self) -> FeatureConfig:
+        if self.window_duration_s <= 0:
+            raise ValueError("window_duration_s must be > 0")
+        if self.min_duration_s <= 0:
+            raise ValueError("min_duration_s must be > 0")
+        if self.window_size < 0:
+            raise ValueError("window_size must be >= 0")
+        if self.min_periods < 0:
+            raise ValueError("min_periods must be >= 0")
+        return self
 
     def resolve(self, sample_interval_s: float) -> tuple[int, int]:
         """Return (window_size, min_periods) for a given sample interval."""
@@ -230,6 +251,15 @@ class VehicleArchetypeConfig(BaseModel):
             "Example: {connector_aging: 0.04} for an aged fleet."
         ),
     )
+
+    @model_validator(mode="after")
+    def _check_age_bounds(self) -> VehicleArchetypeConfig:
+        if self.age_months_min > self.age_months_max:
+            raise ValueError(
+                f"age_months_min ({self.age_months_min}) must be <= "
+                f"age_months_max ({self.age_months_max})"
+            )
+        return self
 
 
 class FleetConfig(BaseModel):
@@ -311,6 +341,32 @@ class FleetConfig(BaseModel):
             ),
         }
     )
+
+    @model_validator(mode="after")
+    def _check_fleet_consistency(self) -> FleetConfig:
+        from datetime import date as _date
+
+        try:
+            _date.fromisoformat(self.start_date)
+        except ValueError:
+            raise ValueError(
+                f"start_date '{self.start_date}' is not valid ISO-8601 (expected YYYY-MM-DD)"
+            )
+        region_keys = set(self.regions)
+        for arch in self.archetypes:
+            if arch.region not in region_keys:
+                raise ValueError(
+                    f"Archetype '{arch.id}' references region '{arch.region}' "
+                    f"which is not defined in fleet.regions (available: {sorted(region_keys)})"
+                )
+            valid_rate_fields = set(FaultRateConfig.model_fields)
+            bad = set(arch.fault_rate_overrides) - valid_rate_fields
+            if bad:
+                raise ValueError(
+                    f"Archetype '{arch.id}' has unknown fault_rate_overrides: {sorted(bad)}. "
+                    f"Valid keys: {sorted(valid_rate_fields)}"
+                )
+        return self
 
 
 # ---------------------------------------------------------------------------
