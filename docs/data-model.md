@@ -293,5 +293,5 @@ none, scp, i2t, latch_off, thermal_shutdown, open_load_diag, over_voltage
 overload_spike, intermittent_overload, voltage_sag, thermal_drift,
 noisy_sensor, dropped_packet, gradual_degradation, connector_aging,
 open_load, jump_start, load_dump, cold_crank, thermal_coupling,
-wake_transient
+wake_transient, ground_offset, short_to_ground
 ```

@@ -59,6 +59,9 @@ class FaultRateConfig(BaseModel):
     load_dump: float = Field(default=0.02, ge=0)
     thermal_coupling: float = Field(default=0.03, ge=0)
     wake_transient: float = Field(default=0.15, ge=0)
+    ground_offset: float = Field(default=0.02, ge=0)
+    short_to_ground: float = Field(default=0.01, ge=0)
+    dropped_packet: float = Field(default=0.03, ge=0)
 
 
 class DriveCycleConfig(BaseModel):

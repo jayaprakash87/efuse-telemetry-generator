@@ -27,7 +27,7 @@ Useful commands:
 pytest -q
 python -m build --sdist --wheel
 efuse-gen --list-configs
-efuse-gen --config default
+efuse-gen --config quick_demo
 efuse-dashboard --help
 ```
 
