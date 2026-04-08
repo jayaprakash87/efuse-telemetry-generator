@@ -71,7 +71,7 @@ def render(
                 labels={"day": "Day"},
             )
             fig_dc.update_layout(height=250, margin=dict(t=10, b=10))
-            st.plotly_chart(fig_dc, use_container_width=True)
+            st.plotly_chart(fig_dc, width="stretch")
 
     # Fault distribution
     st.subheader("Fault Distribution")
@@ -89,7 +89,7 @@ def render(
                 color_discrete_map=FAULT_PALETTE,
             )
             fig_pie.update_layout(margin=dict(t=10, b=10))
-            st.plotly_chart(fig_pie, use_container_width=True)
+            st.plotly_chart(fig_pie, width="stretch")
         else:
             st.info("No fault windows in this run.")
 
@@ -108,7 +108,7 @@ def render(
                     ch_lab[ch_lab["fault_type"] != "none"]["fault_type"].unique()
                 ) or "—",
             })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
 
 
 # ---------------------------------------------------------------------------
@@ -157,7 +157,7 @@ def render_fleet(
     _disp.columns = [c.replace("_", " ").title() for c in _disp.columns]
     st.dataframe(
         _disp,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "N Telemetry Rows": st.column_config.NumberColumn(format="%d"),
@@ -177,7 +177,7 @@ def render_fleet(
             hole=0.35,
         )
         fig_arch.update_layout(margin=dict(t=10, b=10), height=280)
-        st.plotly_chart(fig_arch, use_container_width=True)
+        st.plotly_chart(fig_arch, width="stretch")
 
     with col_m:
         st.subheader("Region Distribution")
@@ -188,7 +188,7 @@ def render_fleet(
             hole=0.35,
         )
         fig_reg.update_layout(margin=dict(t=10, b=10), height=280)
-        st.plotly_chart(fig_reg, use_container_width=True)
+        st.plotly_chart(fig_reg, width="stretch")
 
     with col_r:
         st.subheader("Driving Hours by Vehicle")
@@ -199,7 +199,7 @@ def render_fleet(
             labels={"vehicle_id": "Vehicle", "driving_hours": "Hours", "archetype_id": "Archetype"},
         )
         fig_hours.update_layout(margin=dict(t=10, b=10), height=280, showlegend=True)
-        st.plotly_chart(fig_hours, use_container_width=True)
+        st.plotly_chart(fig_hours, width="stretch")
 
     # Telemetry rows per vehicle
     st.subheader("Telemetry Volume by Vehicle")
@@ -210,7 +210,7 @@ def render_fleet(
         labels={"vehicle_id": "Vehicle", "n_telemetry_rows": "Rows", "region": "Region"},
     )
     fig_rows.update_layout(margin=dict(t=10, b=10), height=280)
-    st.plotly_chart(fig_rows, use_container_width=True)
+    st.plotly_chart(fig_rows, width="stretch")
 
     # Regional weather
     if fleet_weather:
@@ -230,7 +230,7 @@ def render_fleet(
                     labels={"day_index": "Day", "ambient_temp_c": "Ambient Temp (°C)", "region": "Region"},
                 )
                 fig_temp.update_layout(margin=dict(t=10, b=10), height=250)
-                st.plotly_chart(fig_temp, use_container_width=True)
+                st.plotly_chart(fig_temp, width="stretch")
 
             with col_wr:
                 fig_volt = px.line(
@@ -238,7 +238,7 @@ def render_fleet(
                     labels={"day_index": "Day", "supply_voltage_v": "Supply Voltage (V)", "region": "Region"},
                 )
                 fig_volt.update_layout(margin=dict(t=10, b=10), height=250)
-                st.plotly_chart(fig_volt, use_container_width=True)
+                st.plotly_chart(fig_volt, width="stretch")
 
     # Fleet config
     cfg_path = Path(selected_run) / "fleet_config.yaml"

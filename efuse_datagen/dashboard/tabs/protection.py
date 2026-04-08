@@ -55,7 +55,7 @@ def render(
                 labels={"FaultType": "Fault Type"},
             )
             fig_gantt.update_layout(height=max(300, len(ch_order) * 60 + 80), margin=dict(t=10, b=10))
-            st.plotly_chart(fig_gantt, use_container_width=True)
+            st.plotly_chart(fig_gantt, width="stretch")
         else:
             st.info("No fault windows for selected channels.")
 
@@ -69,26 +69,29 @@ def render(
                 labels={"severity": "Severity Score"},
             )
             hist.update_layout(showlegend=False, margin=dict(t=10, b=10))
-            st.plotly_chart(hist, use_container_width=True)
+            st.plotly_chart(hist, width="stretch")
         else:
             st.info("No fault data.")
 
     # ── Fault table ──────────────────────────────────────────────────
     st.subheader("Fault Window Table")
-    fault_table = (
-        lab[
-            (lab["channel_id"].isin(selected_channels)) & (lab["fault_type"] != "none")
-        ]
-        .sort_values(["channel_id", "timestamp"])
-        .assign(timestamp=lambda d: d["timestamp"].dt.strftime("%H:%M:%S.%f").str[:-3])
-        [["timestamp", "channel_id", "fault_type", "severity", "description"]]
-        .rename(columns={
-            "timestamp": "Time", "channel_id": "Channel",
-            "fault_type": "Fault Type", "severity": "Severity",
-            "description": "Description",
-        })
-    )
-    st.dataframe(fault_table, use_container_width=True, hide_index=True)
+    _fault_subset = lab[
+        (lab["channel_id"].isin(selected_channels)) & (lab["fault_type"] != "none")
+    ].sort_values(["channel_id", "timestamp"])
+    if not _fault_subset.empty:
+        fault_table = (
+            _fault_subset
+            .assign(timestamp=lambda d: d["timestamp"].dt.strftime("%H:%M:%S.%f").str[:-3])
+            [["timestamp", "channel_id", "fault_type", "severity", "description"]]
+            .rename(columns={
+                "timestamp": "Time", "channel_id": "Channel",
+                "fault_type": "Fault Type", "severity": "Severity",
+                "description": "Description",
+            })
+        )
+        st.dataframe(fault_table, width="stretch", hide_index=True)
+    else:
+        st.info("No fault labels for selected channels.")
 
     # ── Protection events ────────────────────────────────────────────
     st.markdown("---")
@@ -104,7 +107,7 @@ def render(
                 labels={"protection_event_rate": "Event Rate", "channel_id": "Channel"},
             )
             fig_prot.update_layout(height=300, margin=dict(t=10, b=10))
-            st.plotly_chart(fig_prot, use_container_width=True)
+            st.plotly_chart(fig_prot, width="stretch")
         else:
             st.info("`protection_event_rate` not in features.")
 
@@ -129,7 +132,7 @@ def render(
                 barmode="group", labels={"channel_id": "Channel"},
             )
             bar_prot.update_layout(height=300, margin=dict(t=10, b=10))
-            st.plotly_chart(bar_prot, use_container_width=True)
+            st.plotly_chart(bar_prot, width="stretch")
         else:
             st.info("No protection events for selected channels.")
 
@@ -146,4 +149,4 @@ def render(
             aspect="auto",
         )
         fig_heat.update_layout(height=300, margin=dict(t=10, b=10))
-        st.plotly_chart(fig_heat, use_container_width=True)
+        st.plotly_chart(fig_heat, width="stretch")

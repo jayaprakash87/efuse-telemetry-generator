@@ -62,7 +62,7 @@ def render(
             ]
             _inv = manifest[[c for c in display_cols if c in manifest.columns]].copy()
             _inv.columns = [c.replace("_", " ").title() for c in _inv.columns]
-            st.dataframe(_inv, use_container_width=True, hide_index=True)
+            st.dataframe(_inv, width="stretch", hide_index=True)
 
             st.subheader("Zone Distribution")
             _zone_counts = manifest.groupby("zone_id").size().reset_index(name="Channels")
@@ -71,6 +71,6 @@ def render(
                 labels={"zone_id": "Zone"}, color="zone_id",
             )
             _zone_bar.update_layout(showlegend=False, height=250, margin=dict(t=10, b=10))
-            st.plotly_chart(_zone_bar, use_container_width=True)
+            st.plotly_chart(_zone_bar, width="stretch")
         else:
             st.info("No channel_manifest.parquet found. Re-generate with the latest efuse-gen.")

@@ -21,6 +21,10 @@ def render(
 ) -> None:
     st.header("Derived Feature Time Series")
 
+    if feat.empty:
+        st.info("No feature data available for this run.")
+        return
+
     feature_options = [
         "rolling_rms_current",
         "rolling_mean_current",
@@ -84,5 +88,5 @@ def render(
             height=200 * n,
             margin=dict(t=40, b=20, l=70, r=20),
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
         st.markdown("---")

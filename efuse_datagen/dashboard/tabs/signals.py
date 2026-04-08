@@ -140,5 +140,5 @@ def render(
         fig.update_yaxes(title_text="V", row=2, col=1)
         fig.update_yaxes(title_text="°C", row=3, col=1)
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
         st.markdown("---")

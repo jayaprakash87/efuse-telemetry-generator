@@ -73,7 +73,7 @@ fleet_weather = None
 selected_vehicle = None
 
 if fleet_mode:
-    st.sidebar.info("🚛 Fleet run")
+    render_data_source_banner(selected_run)
     fleet_manifest = load_fleet_manifest(selected_run)
     fleet_weather = load_regional_weather(selected_run)
 
