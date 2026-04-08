@@ -46,7 +46,7 @@ Before opening a pull request:
 1. Run `pytest -q`.
 2. Run `python -m build --sdist --wheel`.
 3. If you changed packaged runtime flows, smoke test at least one of:
-   - `efuse-gen --config default`
+   - `efuse-gen --config quick_demo`
    - `efuse-gen --list-configs`
    - `efuse-dashboard --help`
 4. Update docs if user-facing behaviour changed.

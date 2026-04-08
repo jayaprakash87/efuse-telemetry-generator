@@ -206,7 +206,7 @@ efuse_datagen/
 ├── dashboard_launcher.py     # efuse-dashboard entry point
 ├── dashboard/
 │   ├── _shared.py            # Data loaders, fault palette, data-source detection
-│   └── tabs/                 # One module per tab: overview, signals, features, protection, config
+│   └── tabs/                 # One module per tab: overview, signals, features, protection, config, fleet
 ├── simulation/
 │   ├── generator.py          # TelemetryGenerator — signal synthesis, fault waveforms, protection
 │   └── drive_cycles.py       # DriveCyclePlanner — schedule, fault distribution, multi-cycle orchestration

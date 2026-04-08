@@ -188,7 +188,7 @@ All parameters are still individually tunable — the profile just sets defaults
 
 | Config | Days | Cycles | Driving Hours | Rows | Labels |
 |--------|------|--------|---------------|------|--------|
-| `one_month.yaml` (seed 42) | 30 | 55 | 36.8 h | 8.6 M | 142 |
+| `multi_day.yaml` (seed 42) | 30 | 55 | 36.8 h | 8.6 M | 142 |
 | 7-day commuter | 7 | ~14 | ~6 h | ~1.4 M | ~25 |
 | 90-day fleet unit | 90 | ~180 | ~100 h | ~24 M | ~500 |
 

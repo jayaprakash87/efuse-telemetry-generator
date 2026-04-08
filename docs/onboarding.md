@@ -37,10 +37,10 @@ pip install -e ".[dev,dashboard]"
 ### 2. Run the Demo
 
 ```bash
-efuse-gen --config default
+efuse-gen --config quick_demo
 ```
 
-This generates a 3-channel, 60-second dataset in `output/<run_id>/`. Takes under 2 seconds.
+This generates a 3-channel, 60-second dataset in `output/quick_demo_<timestamp>/`. Takes under 2 seconds.
 
 ### 3. Explore the Output
 
@@ -53,7 +53,7 @@ Select the run from the sidebar. Walk through each tab: Overview → Signals →
 ### 4. Run the Full Topology
 
 ```bash
-efuse-gen --config zone_controller_full
+efuse-gen --config single_drive
 ```
 
 65 channels, 4 zones, 300 seconds, 21 fault injections. ~195K rows, takes ~10 seconds.
@@ -61,12 +61,20 @@ efuse-gen --config zone_controller_full
 ### 5. Generate a Month of Data
 
 ```bash
-efuse-gen --config one_month
+efuse-gen --config multi_day
 ```
 
 30-day multi-cycle simulation. ~55 drive cycles, ~37 hours of driving, ~8.6M rows. Takes ~2 minutes.
 
-### 6. Ingest Real Measurement Data
+### 6. Generate a Fleet
+
+```bash
+efuse-gen --config fleet --vehicles 3 --days 3
+```
+
+3 vehicles across 2 regions, 3 days of driving per vehicle. ~2.9M rows total. The dashboard shows a Fleet overview tab with vehicle manifest, archetype/region breakdowns, and regional weather.
+
+### 7. Ingest Real Measurement Data
 
 ```bash
 efuse-ingest bench_recording.csv \
@@ -76,7 +84,7 @@ efuse-ingest bench_recording.csv \
 
 This creates a standard run directory from your bench CSV. The dashboard shows it alongside synthetic runs with a 🔬 Bench Recording badge.
 
-### 7. Run Tests
+### 8. Run Tests
 
 ```bash
 pytest -v
@@ -145,14 +153,14 @@ See [drive-cycles.md](drive-cycles.md) for the full deep-dive.
 |------|-----------------|
 | [`efuse_datagen/schemas/telemetry.py`](../efuse_datagen/schemas/telemetry.py) | All data types. Start here to understand the vocabulary. |
 | [`efuse_datagen/config/catalog.py`](../efuse_datagen/config/catalog.py) | eFuse IC parameters + vehicle topology. Read `EFUSE_CATALOG` and `example_topology()`. |
-| [`efuse_datagen/config/models.py`](../efuse_datagen/config/models.py) | Config hierarchy. Read `SimulationConfig` to see what the YAML maps to. |
+| [`efuse_datagen/config/models.py`](../efuse_datagen/config/models.py) | Config hierarchy. Read `GeneratorConfig` to see what the YAML maps to. |
 | [`efuse_datagen/simulation/generator.py`](../efuse_datagen/simulation/generator.py) | Core engine. Read `_generate_channel()` — it's the 8-stage pipeline. |
 | [`efuse_datagen/simulation/drive_cycles.py`](../efuse_datagen/simulation/drive_cycles.py) | Multi-cycle planner. Read `generate_schedule()` and `distribute_faults()`. |
 | [`efuse_datagen/features/engine.py`](../efuse_datagen/features/engine.py) | Feature computation. Read `compute()` — one method, 20+ features. |
 | [`efuse_datagen/storage/writer.py`](../efuse_datagen/storage/writer.py) | Output layer. Straightforward Parquet/CSV writes. |
 | [`efuse_datagen/cli.py`](../efuse_datagen/cli.py) | CLI orchestration. Single-cycle vs multi-cycle branching logic. |
 | [`efuse_datagen/dashboard_app.py`](../efuse_datagen/dashboard_app.py) | Packaged Streamlit UI. [`dashboard/app.py`](../dashboard/app.py) is only a compatibility wrapper. |
-| [`efuse_datagen/config/templates/one_month.yaml`](../efuse_datagen/config/templates/one_month.yaml) | Best example of full multi-cycle config. Read the comments. |
+| [`efuse_datagen/config/templates/multi_day.yaml`](../efuse_datagen/config/templates/multi_day.yaml) | Best example of full multi-cycle config. Read the comments. |
 | [`tests/test_simulation.py`](../tests/test_simulation.py) | Test patterns — good examples of how to call the generator programmatically. |
 
 **Suggested reading order:** `telemetry.py` → `catalog.py` → `models.py` → `generator.py` → `cli.py` → run the demo → read the dashboard code.
@@ -167,7 +175,7 @@ See [drive-cycles.md](drive-cycles.md) for the full deep-dive.
 2. Add waveform generator method in `generator.py` (follow existing pattern, e.g. `_apply_overload_spike`)
 3. Add dispatch case in the fault injection loop in `_generate_channel()`
 4. Add Poisson rate field to `FaultRateConfig` in `models.py`
-5. Add colour to `FAULT_PALETTE` in `dashboard/app.py`
+5. Add colour to `FAULT_PALETTE` in `dashboard/_shared.py`
 6. Add test case in `tests/test_simulation.py`
 
 ### Add an eFuse IC Family
@@ -178,9 +186,9 @@ See [drive-cycles.md](drive-cycles.md) for the full deep-dive.
 
 ### Add a Dashboard Tab
 
-1. Add tab to the `st.tabs()` call in `app.py`
-2. Write a rendering function (use existing tabs as templates)
-3. Tab content can access all loaded DataFrames: `tel_df`, `feat_df`, `label_df`, `manifest_df`, `cycles_df`
+1. Create a module in `efuse_datagen/dashboard/tabs/` with a `render(**ctx)` function
+2. Register it in `dashboard_app.py` — add to the tab labels list and render block
+3. The `ctx` dict includes: `tel`, `feat`, `lab`, `manifest`, `dc_df`, `selected_channels`, `channels`, `selected_run`, `label_map`, `is_multi_cycle`, `fleet_mode`, `fleet_manifest`, `fleet_weather`, `selected_vehicle`
 
 ### Create a Custom Vehicle Topology
 
@@ -191,10 +199,10 @@ See [drive-cycles.md](drive-cycles.md) for the full deep-dive.
 ### Debug a Specific Channel's Output
 
 ```python
-from efuse_datagen.config.models import SimulationConfig
+from efuse_datagen.config.models import GeneratorConfig
 from efuse_datagen.simulation.generator import TelemetryGenerator
 
-config = SimulationConfig(
+config = GeneratorConfig(
     channels=[ChannelMeta(channel_id="ch_01", nominal_current_a=6.0)],
     fault_injections=[FaultInjection(channel_id="ch_01", fault_type="overload_spike", start_s=5.0, duration_s=3.0, intensity=0.8)],
     duration_s=30.0,

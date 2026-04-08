@@ -8,10 +8,10 @@ All eFuse Telemetry Generator behaviour is driven by YAML configuration files. T
 
 ```bash
 # Use a built-in config
-efuse-gen --config default
+efuse-gen --config quick_demo
 
 # Override specific fields via CLI
-efuse-gen --config default --duration 120 --seed 99 --format csv
+efuse-gen --config quick_demo --duration 120 --seed 99 --format csv
 ```
 
 CLI flags override the corresponding YAML fields:
@@ -41,10 +41,10 @@ The core scenario definition.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `scenario_id` | string | `"default"` | Unique scenario identifier (used in logging) |
-| `name` | string | `"Default Scenario"` | Human-readable scenario name |
+| `scenario_id` | string | `"quick_demo"` | Unique scenario identifier (used in logging and output directory naming) |
+| `name` | string | `"Quick Demo"` | Human-readable scenario name |
 | `description` | string | `""` | Free-text description |
-| `duration_s` | float | `60.0` | Simulation duration in seconds (single-cycle mode) |
+| `duration_s` | float | `60.0` | Simulation duration in seconds (single-cycle mode). Ignored when `drive_cycle.enabled` is true — total duration is determined by `drive_cycle.total_days`. |
 | `sample_interval_ms` | float | `100.0` | Sample period in milliseconds. Use 100 for short runs, 1000 for month-long. |
 | `seed` | int | `42` | Master random seed for reproducibility |
 | `use_example_topology` | bool | `false` | When true, loads the built-in 65-channel 4-zone BEV topology instead of inline channels |
@@ -203,38 +203,49 @@ Output persistence settings.
 
 ## Included Configs
 
-### `default`
+### `quick_demo`
 
 3-channel demo with 4 manual fault injections over 60 seconds. Good for quick smoke tests and learning the tool.
 
 ```bash
-efuse-gen --config default
+efuse-gen --config quick_demo
 # → ~1,800 rows, 4 fault labels
 ```
 
-Source YAML: [`efuse_datagen/config/templates/default.yaml`](../efuse_datagen/config/templates/default.yaml)
+Source YAML: [`efuse_datagen/config/templates/quick_demo.yaml`](../efuse_datagen/config/templates/quick_demo.yaml)
 
-### `zone_controller_full`
+### `single_drive`
 
 Full 65-channel 4-zone topology with 21 manual faults over 300 seconds. Uses `use_example_topology: true` to load the built-in BEV topology from the eFuse catalog.
 
 ```bash
-efuse-gen --config zone_controller_full
+efuse-gen --config single_drive
 # → ~195,000 rows, ~9,000 labels, 31 feature columns
 ```
 
-Source YAML: [`efuse_datagen/config/templates/zone_controller_full.yaml`](../efuse_datagen/config/templates/zone_controller_full.yaml)
+Source YAML: [`efuse_datagen/config/templates/single_drive.yaml`](../efuse_datagen/config/templates/single_drive.yaml)
 
-### `one_month`
+### `multi_day`
 
 30-day multi-cycle simulation. Stochastic fault injection, progressive aging, mean-reverting ambient temperature. See [drive-cycles.md](drive-cycles.md) for details.
 
 ```bash
-efuse-gen --config one_month
+efuse-gen --config multi_day
 # → ~55 cycles, ~37 h driving, ~8.6 M rows
 ```
 
-Source YAML: [`efuse_datagen/config/templates/one_month.yaml`](../efuse_datagen/config/templates/one_month.yaml)
+Source YAML: [`efuse_datagen/config/templates/multi_day.yaml`](../efuse_datagen/config/templates/multi_day.yaml)
+
+### `fleet`
+
+Multiple vehicles over a shared timeline with regional weather. Population archetypes, age-dependent fault scaling, parallel generation.
+
+```bash
+efuse-gen --config fleet --vehicles 3 --days 3
+# → 3 vehicles × 3 days, ~2.9 M rows total
+```
+
+Source YAML: [`efuse_datagen/config/templates/fleet.yaml`](../efuse_datagen/config/templates/fleet.yaml)
 
 ### `stress_test`
 

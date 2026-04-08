@@ -2,7 +2,7 @@
 
 The Streamlit dashboard provides interactive visualisation of eFuse telemetry data — both synthetic and real measurement recordings. It is designed for eFuse team demos, protection algorithm validation reviews, and fault analysis walkthroughs.
 
-The dashboard is modular: `dashboard_app.py` is a slim orchestrator (~140 lines) that delegates rendering to tab modules in `efuse_datagen/dashboard/tabs/`.
+The dashboard is modular: `dashboard_app.py` is a slim orchestrator that delegates rendering to tab modules in `efuse_datagen/dashboard/tabs/`. Shared utilities (data loaders, fault palette, data-source detection) live in `_shared.py`.
 
 ---
 
@@ -13,7 +13,10 @@ The dashboard is modular: `dashboard_app.py` is a slim orchestrator (~140 lines)
 pip install -e ".[dashboard]"
 
 # Generate synthetic data
-efuse-gen --config zone_controller_full
+efuse-gen --config single_drive
+
+# Or generate fleet data
+efuse-gen --config fleet --vehicles 3 --days 3
 
 # Or ingest real bench data
 efuse-ingest recording.csv --map "I_ch01=current_a,U_bat=voltage_v,T_junc=temperature_c"
@@ -29,7 +32,14 @@ efuse-dashboard
 
 ### Run Selector
 
-Dropdown listing all runs in the `output/` directory (scans 2 levels deep for `telemetry.parquet`), sorted by recency (newest first). Select a run to load its telemetry, features, labels, and metadata.
+Dropdown listing all runs in the `output/` directory (scans 2 levels deep for `telemetry.parquet` or `fleet_manifest.parquet`), sorted by recency (newest first). Fleet runs are prefixed with a 🚛 icon. Select a run to load its telemetry, features, labels, and metadata.
+
+### Fleet Mode
+
+When a fleet run is selected, the sidebar enters fleet mode:
+- A **Vehicle** dropdown lets you drill into individual vehicles (showing vehicle ID and archetype)
+- All per-vehicle tabs (Overview, Signals, Features, Protection, Config) show data for the selected vehicle
+- A **🚛 Fleet** tab is prepended to the tab bar with fleet-level analytics
 
 ### Data Source Banner
 
@@ -51,24 +61,47 @@ For runs produced with `drive_cycle.enabled: true`, a day multi-select appears. 
 
 ### Channel Selector
 
-Multi-select listing all channels (after zone filtering), displaying load names from the manifest (e.g., "ch_01 — headlamp_left"). First 4 channels are selected by default. Maximum 8 channels displayed simultaneously for browser performance.
+Multi-select listing all channels (after zone filtering), displaying load names from the manifest (e.g., "ch_01 — headlamp_left"). First 4 channels are selected by default.
 
 ---
 
 ## Tabs
 
-The dashboard has 5 tabs: Overview, Signals, Features, Fault & Protection, Config.
+The dashboard has 5 standard tabs: Overview, Signals, Features, Fault & Protection, Config. Fleet runs add a 6th tab (🚛 Fleet) at the start.
+
+### 🚛 Fleet (fleet runs only)
+
+Fleet-level overview when a fleet run is selected.
+
+**KPI Cards:**
+- Vehicles (ok/total), total telemetry rows, driving hours, fault labels, drive cycles, archetypes
+
+**Vehicle Manifest Table:**
+Per-vehicle summary: ID, archetype, region, profile, age, status, row counts, driving hours.
+
+**Charts:**
+- Archetype distribution (donut chart)
+- Region distribution (donut chart)
+- Driving hours by vehicle (bar, coloured by archetype)
+- Telemetry volume by vehicle (bar, coloured by region)
+
+**Regional Weather Timelines:**
+Ambient temperature and supply voltage line charts by region and day.
+
+**Fleet Config:**
+Expandable YAML viewer showing the fleet configuration.
 
 ### 📊 Overview
 
 Top-level summary of the selected run.
 
 **KPI Cards:**
-- Total drive cycles (multi-cycle) or "1" (single-cycle)
+- Total drive cycles (multi-cycle) or duration (single-cycle)
 - Number of channels
 - Total telemetry samples
 - Fault label count
 - Trip event count
+- Driving hours (multi-cycle)
 
 **Drive Cycle Timeline** (multi-cycle only):
 Gantt chart showing each drive cycle as a horizontal bar, colored by day. X-axis is absolute time, Y-axis is cycle index. Hover for cycle duration and ambient temperature.
@@ -139,7 +172,7 @@ Channel × event type matrix showing event counts.
 Run configuration inspection.
 
 **YAML Viewer:**
-The full `config.yaml` snapshot from the run, displayed as read-only formatted YAML. Includes all resolved defaults and CLI overrides.
+The full `config.yaml` snapshot from the run, displayed as read-only formatted YAML. Includes all resolved defaults and CLI overrides. For fleet runs, shows `fleet_config.yaml` and per-vehicle configs.
 
 **Channel Inventory Table:**
 Table of all channels with zone_id, load_name, efuse_family, nominal/max current, duty_cycle. Sourced from `channel_manifest.parquet`.

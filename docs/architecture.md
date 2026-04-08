@@ -90,19 +90,25 @@ The generator creates these scenarios on demand with precise ground-truth labels
          ▼
 ┌──────────────────────────────────────────────────────────┐
 │                StorageWriter (writer.py)                  │
-│  output/<run_id>/                                        │
+│  output/<config>_<YYYYMMDD-HHMMSS>/                      │
 │  ├── telemetry.parquet                                   │
 │  ├── features.parquet                                    │
 │  ├── labels.parquet                                      │
 │  ├── channel_manifest.parquet                            │
 │  ├── drive_cycles.parquet   (multi-cycle only)           │
 │  └── config.yaml                                         │
+│                                                          │
+│  Fleet mode: output/fleet_<timestamp>/                   │
+│  ├── fleet_manifest.parquet  (vehicle summary)           │
+│  ├── fleet_config.yaml                                   │
+│  ├── regions/*_weather.parquet                           │
+│  └── vehicles/v0001...vNNNN/ (per-vehicle files)         │
 └────────┬─────────────────────────────────────────────────┘
          │
          ▼
 ┌──────────────────────────────────────────────────────────┐
 │              Streamlit Dashboard (dashboard_app.py)     │
-│  5-tab modular UI: Overview, Signals, Features,         │
+│  6-tab modular UI: Fleet, Overview, Signals, Features,  │
 │  Fault & Protection, Config                              │
 │  Data-source aware: synthetic / bench / HIL / production │
 └──────────────────────────────────────────────────────────┘
@@ -132,8 +138,10 @@ Key types:
 ### `efuse_datagen/config/models.py` — Configuration Hierarchy
 
 Pydantic models for YAML config parsing:
-- `SimulationConfig` — top-level: scenario_id, duration, sample interval, channels, faults, power states, seed
+- `GeneratorConfig` — top-level: wraps simulation, features, storage, and optional fleet config
+- `SimulationConfig` — scenario_id, duration, sample interval, channels, faults, power states, seed
 - `DriveCycleConfig` — multi-cycle scheduling parameters (days, trip distribution, ambient, fault rates)
+- `FleetConfig` — fleet-level settings: archetypes, regions, vehicle count, days
 - `FaultRateConfig` — per-fault-type Poisson rates (events per vehicle-hour)
 - `FeatureConfig` — rolling window tuning
 - `StorageConfig` — output format and directory
@@ -193,8 +201,8 @@ Writes Parquet (default), CSV, or JSON. Handles:
 
 ### `efuse_datagen/cli.py` — CLI Entry Points
 
-Typer-based. Two entry points:
-- **`efuse-gen`** — Synthetic data generation. Auto-detects single vs multi-cycle from config. Multi-cycle mode uses Rich progress bar. Always writes channel manifest; writes drive_cycles only when multi-cycle.
+Typer-based. Entry points:
+- **`efuse-gen`** — Synthetic data generation. Auto-detects single-cycle, multi-cycle, or fleet from config. Fleet mode generates multiple vehicles in parallel. Output directories are named `<config>_<YYYYMMDD-HHMMSS>`.
 - **`efuse-ingest`** — Measurement data ingestion. Accepts a file or directory with column mapping, writes standard run directory.
 
 ### `efuse_datagen/ingestion/` — Measurement Data Ingestion
@@ -212,7 +220,7 @@ Data-agnostic analysis functions that work on any telemetry (synthetic or real):
 
 ### `dashboard/app.py` — Visualisation
 
-5-tab modular Streamlit dashboard. Slim orchestrator `dashboard_app.py` delegates to tab modules in `efuse_datagen/dashboard/tabs/`. Shared utilities (data loaders, fault palette, data-source detection) live in `_shared.py`. Sidebar: run selector, data-source badge, zone filter, day filter (multi-cycle), channel multi-select with load name labels.
+6-tab modular Streamlit dashboard (5 standard + Fleet tab for fleet runs). Slim orchestrator `dashboard_app.py` delegates to tab modules in `efuse_datagen/dashboard/tabs/`. Shared utilities (data loaders, fault palette, data-source detection) live in `_shared.py`. Sidebar: run selector (with 🚛 prefix for fleet runs), data-source badge, vehicle selector (fleet mode), zone filter, day filter (multi-cycle), channel multi-select with load name labels.
 
 ---
 

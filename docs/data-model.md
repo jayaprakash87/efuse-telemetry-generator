@@ -6,10 +6,12 @@ This document defines every output file, column, enum, and data type produced by
 
 ## Output Directory Layout
 
-Each run produces an isolated directory:
+Each run produces an isolated directory under `output/`.
+
+### Single-Vehicle Run
 
 ```
-output/<run_id>/
+output/<config>_<YYYYMMDD-HHMMSS>/
 ├── telemetry.parquet          # Raw per-sample signals
 ├── features.parquet           # Rolling derived features
 ├── labels.parquet             # Ground-truth fault windows
@@ -20,7 +22,32 @@ output/<run_id>/
 └── metadata.json              # Arbitrary metadata (ingested runs, optional)
 ```
 
-`<run_id>` format: `YYYYMMDD-HHMMSS-<6-char-random>`, e.g. `20260407-114810-dgldik`.
+### Fleet Run
+
+```
+output/fleet_<YYYYMMDD-HHMMSS>/
+├── fleet_manifest.parquet     # One row per vehicle with summary stats
+├── fleet_config.yaml          # Full fleet config snapshot
+├── fleet_telemetry.parquet    # Combined telemetry (if --combined)
+├── fleet_labels.parquet       # Combined labels (if --combined)
+├── regions/
+│   ├── nordic_weather.parquet
+│   ├── temperate_weather.parquet
+│   └── ...
+└── vehicles/
+    ├── v0001/
+    │   ├── telemetry.parquet
+    │   ├── features.parquet
+    │   ├── labels.parquet       # May be absent if no faults injected
+    │   ├── channel_manifest.parquet
+    │   ├── drive_cycles.parquet
+    │   └── config.yaml
+    ├── v0002/
+    │   └── ...
+    └── ...
+```
+
+`<run_id>` format: `<config>_<YYYYMMDD-HHMMSS>`, e.g. `quick_demo_20260408-134505`, `fleet_20260408-134343`. Ingested runs use the format `ingest_<YYYYMMDD-HHMMSS>`.
 
 Runs from `efuse-gen` include `config.yaml` and `channel_manifest.parquet`. Runs from `efuse-ingest` include `data_source.txt` and always have `telemetry.parquet`, `features.parquet`, and `labels.parquet` (labels may be empty if no ground truth was provided).
 
@@ -188,11 +215,45 @@ One row per drive cycle. Only written in multi-cycle mode.
 
 ## config.yaml
 
-Exact copy of the resolved `SimulationConfig` used for the run, including any CLI overrides. Enables exact reproduction:
+Exact copy of the resolved `GeneratorConfig` used for the run, including any CLI overrides. Enables exact reproduction:
 
 ```bash
-efuse-gen --config output/20260407-114810-dgldik/config.yaml
+efuse-gen --config output/quick_demo_20260408-134505/config.yaml
 ```
+
+---
+
+## fleet_manifest.parquet
+
+One row per vehicle. Written at the fleet run root. The dashboard reads this to build the Fleet overview tab.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `vehicle_id` | string | Vehicle identifier, e.g. `v0001` |
+| `archetype_id` | string | Population archetype, e.g. `nordic_commuter` |
+| `region` | string | Operating region: `nordic`, `temperate`, `mediterranean` |
+| `profile` | string | Driving profile: `commuter`, `mixed`, `heavy` |
+| `age_months` | int | Vehicle age in months (affects wear scaling) |
+| `seed` | int | Per-vehicle random seed |
+| `status` | string | `ok` or error description |
+| `n_telemetry_rows` | int | Total telemetry rows generated |
+| `n_fault_labels` | int | Number of fault label rows |
+| `n_drive_cycles` | int | Number of drive cycles |
+| `driving_hours` | float64 | Total driving hours |
+| `telem_path` | string | Relative path to telemetry.parquet |
+| `labels_path` | string | Relative path to labels.parquet |
+| `features_path` | string | Relative path to features.parquet |
+
+## Regional Weather Files
+
+`regions/<region>_weather.parquet` — one row per simulated day per region.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `day_index` | int | 0-based day index |
+| `day_of_year` | int | Calendar day of year |
+| `ambient_temp_c` | float64 | Ambient temperature (°C) |
+| `supply_voltage_v` | float64 | Supply voltage (V) |
 
 ---
 
