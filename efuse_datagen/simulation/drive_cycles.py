@@ -401,9 +401,7 @@ def generate_multi_cycle(
                 "channels": cycle_channels,
                 "power_state_events": DriveCyclePlanner.build_power_events(cycle),
                 "fault_injections": faults_per_cycle.get(cycle.cycle_id, []),
-                "seed": int(child_seeds[i].entropy % (2**31))
-                if isinstance(child_seeds[i].entropy, int)
-                else int(child_seeds[i].entropy[0] % (2**31)),
+                "seed": int(child_seeds[i].generate_state(1)[0] % (2**31)),
             }
         )
 
@@ -430,5 +428,6 @@ def generate_multi_cycle(
             progress_callback(i + 1, len(cycles))
 
     telem = pd.concat(all_telem, ignore_index=True) if all_telem else pd.DataFrame()
-    labels = pd.concat(all_labels, ignore_index=True) if all_labels else pd.DataFrame()
+    non_empty_labels = [df for df in all_labels if not df.empty]
+    labels = pd.concat(non_empty_labels, ignore_index=True) if non_empty_labels else pd.DataFrame()
     return telem, labels

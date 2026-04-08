@@ -165,11 +165,7 @@ def sample_population(fleet_cfg: FleetConfig) -> list[VehicleSpec]:
 
         age = int(rng.integers(arch.age_months_min, max(arch.age_months_max, arch.age_months_min + 1)))
 
-        child_entropy = child_seeds[i].entropy
-        if isinstance(child_entropy, int):
-            vseed = child_entropy % (2**31)
-        else:
-            vseed = int(child_entropy[0] % (2**31))
+        vseed = int(child_seeds[i].generate_state(1)[0] % (2**31))
 
         specs.append(VehicleSpec(
             vehicle_id=f"v{i + 1:04d}",
@@ -428,7 +424,6 @@ class FleetRunner:
                 self.cfg.simulation,
                 region_weather.get(spec.region, list(region_weather.values())[0]),
                 start_date,
-                str(out_dir),
                 str(out_dir),
                 feat_cfg_dict,
                 run_id,

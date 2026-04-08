@@ -33,8 +33,12 @@ jobs:
       - name: Lint with ruff
         run: ruff check efuse_datagen/ tests/
 
+      - name: Type-check with mypy
+        run: mypy efuse_datagen/ --ignore-missing-imports
+        continue-on-error: true
+
       - name: Run tests
-        run: pytest -q
+        run: pytest -q --cov=efuse_datagen --cov-fail-under=75
 
   build:
     name: Build package
