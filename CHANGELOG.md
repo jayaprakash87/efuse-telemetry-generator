@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-04-08
+
 ### Added
 - **Measurement ingestion adapter** (`efuse_datagen/ingestion/`) — load real bench, HIL,
   or production recordings (CSV, Parquet, MDF/MF4, BLF/ASC) into the standard telemetry
@@ -22,6 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   any data source (synthetic or real).
 - Wire gauge (`wire_gauge_awg`) and run length (`wire_run_length_m`) fields on `ChannelMeta`.
 - Bus voltage nominal field (`bus_voltage_nominal_v`) on `SimulationConfig`.
+- **CLI input validation** — mode-mismatch warnings and argument-range checks.
+- **Cross-field validation** on config and schema models; `extra = "forbid"` rejects unknown YAML keys.
+- **Fleet-level run discovery & visualization** in the dashboard.
+- New simulation templates: `fleet`, `multi_day`, `single_drive`, `quick_demo`.
+- Example script for ingesting bench recording CSV into standard run format.
+- **Versioning & type hinting** — `py.typed` marker, `__version__` export.
+- **CI enhancements** — ruff linting step, Pyright type checking, coverage reporting.
+- Integration tests for fleet-scale generation.
 
 ### Changed
 - **Dashboard modularised** — monolithic 790-line `dashboard_app.py` replaced with a
@@ -29,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (overview, signals, features, protection, config).
 - Dashboard tabs consolidated from 6 to 5: merged Fault Analysis + Protection Events →
   "Fault & Protection"; renamed Telemetry → Signals.
+- Dashboard rendering improved with better layout and error handling/boundaries.
 - `list_runs()` now scans 2 levels deep to find `telemetry.parquet`, supporting nested
   run directories (e.g., `output/bench/<run_id>/`).
 - `load_run()` handles empty DataFrames and non-datetime timestamp columns gracefully.
@@ -40,6 +51,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `efuse-gen --config fleet` (auto-detected from `fleet:` key in config).
 - **Config-prefixed output directories** — runs are now written to
   `output/<config>_<YYYYMMDD-HHMMSS>/` instead of `output/<YYYYMMDD-HHMMSS-random>/`.
+- PEP 604 union types across codebase (`X | None` instead of `Optional[X]`).
+- Dependency versions constrained in `pyproject.toml`.
+
+### Fixed
+- Feature engine edge-case hardening.
+- Cache expiration added to data loading functions.
+- ANSI escape codes stripped in CLI validation tests for accurate assertions.
+- Missing fault rate fields and stale doc references corrected.
+- Unused imports removed across test files and feature modules.
+- Seed generation refactored in simulation files for deterministic fleet runs.
 
 ## [0.1.1] — 2026-04-07
 

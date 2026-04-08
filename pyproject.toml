@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "efuse-telemetry-generator"
-version = "0.1.1"
+version = "0.2.0"
 description = "Standalone synthetic eFuse telemetry generator — physics-based signal synthesis, feature extraction, and fault labelling for ZC architecture validation"
 readme = "README.md"
 requires-python = ">=3.10"
