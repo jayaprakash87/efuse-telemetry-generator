@@ -17,10 +17,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 OUTPUT_ROOT = Path(
-    os.environ.get(
-        "EFUSE_TELEMETRY_OUTPUT_DIR",
-        os.environ.get("VIP_DATA_GENERATOR_OUTPUT_DIR", Path.cwd() / "output"),
-    )
+    os.environ.get("EFUSE_TELEMETRY_OUTPUT_DIR", Path.cwd() / "output")
 ).expanduser()
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,7 @@
-# Full Zone Controller scenario — all 4 ZCs, 65 channels, rich fault coverage
+# Single Drive — full 65-channel zone controller, one ignition cycle (5 min)
+# 4 Zone Controllers, 21 fault injections, power-state timeline
+#
+# Progression: quick_demo → single_drive → multi_day → fleet → stress_test
 #
 # Topology: 4 Zone Controllers / 65 eFuse channels
 #   zone_rear     ch_001–ch_025  (25 ch) — seating, lighting, infotainment, ADAS, drivetrain
@@ -9,7 +12,7 @@
 # Duration: 300 s  (5 min) — covers warm-up, nominal cruise, and fault windows
 
 simulation:
-  scenario_id: zone_controller_full
+  scenario_id: single_drive
   name: "Full Zone Controller — All 65 Channels"
   description: >
     Complete 4-zone BEV/premium topology with 65 eFuse channels.

@@ -1,10 +1,12 @@
-# Default scenario configuration
-# Simulates 3 eFuse channels over 60 seconds with mixed fault injections
+# Quick Demo — 3 channels, 60 seconds, a handful of faults
+# Smallest scenario: see the full pipeline in action in under 10 seconds.
+#
+# Progression: quick_demo → single_drive → multi_day → fleet → stress_test
 
 simulation:
-  scenario_id: demo_mixed_faults
-  name: "Mixed Fault Demo"
-  description: "Three channels with different fault injections for demonstration"
+  scenario_id: quick_demo
+  name: "Quick Demo — 3 Channels"
+  description: "Three channels with different fault injections for quick demonstration"
   duration_s: 60.0
   sample_interval_ms: 100.0
   seed: 42
@@ -66,20 +68,9 @@ simulation:
       intensity: 0.7
 
 features:
-  window_size: 50
-  min_periods: 10
-
-model:
-  anomaly_contamination: auto
-  anomaly_n_estimators: 100
-  model_dir: artifacts/models
+  window_duration_s: 5.0
+  min_duration_s: 1.0
 
 storage:
   output_dir: output
   format: parquet
-
-edge:
-  batch_size: 50
-  alert_anomaly_threshold: 0.6
-  cycle_tracking_enabled: true
-  lifetime_tracking_enabled: true

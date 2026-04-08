@@ -32,6 +32,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `list_runs()` now scans 2 levels deep to find `telemetry.parquet`, supporting nested
   run directories (e.g., `output/bench/<run_id>/`).
 - `load_run()` handles empty DataFrames and non-datetime timestamp columns gracefully.
+- **Unified config architecture** — single `GeneratorConfig` model with optional `fleet: FleetConfig`
+  field replaces the separate `PlatformConfig` / `FleetSimConfig` / `load_fleet_config()`.
+- **Renamed built-in configs** — `default` → `quick_demo`, `zone_controller_full` → `single_drive`,
+  `one_month` → `multi_day`. New `fleet` config bundled as built-in template.
+- **Merged fleet CLI** — `efuse-fleet` removed; fleet mode is now activated via
+  `efuse-gen --config fleet` (auto-detected from `fleet:` key in config).
+- **Config-prefixed output directories** — runs are now written to
+  `output/<config>_<YYYYMMDD-HHMMSS>/` instead of `output/<YYYYMMDD-HHMMSS-random>/`.
 
 ## [0.1.1] — 2026-04-07
 
@@ -39,13 +47,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Renamed** the entire project from `vip-data-generator` / `vip_datagen` to
   `efuse-telemetry-generator` / `efuse_datagen`.
 - CLI entry points renamed: `vip-gen` → `efuse-gen`, `vip-dashboard` → `efuse-dashboard`.
-- Environment variable renamed: `VIP_DATA_GENERATOR_OUTPUT_DIR` → `EFUSE_TELEMETRY_OUTPUT_DIR`
-  (old name still accepted for backward compatibility).
+- Environment variable renamed: `VIP_DATA_GENERATOR_OUTPUT_DIR` → `EFUSE_TELEMETRY_OUTPUT_DIR`.
 - Repository moved to <https://github.com/jayaprakash87/efuse-telemetry-generator>.
 
 ### Fixed
 - Unused `sys` import in `cli.py`.
-- Missing `PlatformConfig` import in `cli.py` type annotation.
 - Unused `timezone` import in `drive_cycles.py`.
 
 ## [0.1.0] — 2026-04-07

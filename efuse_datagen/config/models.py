@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from typing import Optional
+
 import yaml
 from pydantic import BaseModel, Field
 
@@ -62,9 +64,10 @@ class FaultRateConfig(BaseModel):
 class DriveCycleConfig(BaseModel):
     """Multi-day drive cycle schedule configuration.
 
-    When ``enabled=True`` the planner auto-generates a realistic month-long
-    schedule of ignition cycles, overriding the top-level ``duration_s``,
-    ``power_state_events``, and ``fault_injections``.
+    When ``enabled=True`` the planner auto-generates a realistic calendar of
+    ignition cycles.  The top-level ``SimulationConfig.duration_s`` is ignored —
+    each cycle's duration is computed by the planner.  ``fault_injections`` and
+    ``power_state_events`` are also generated per-cycle.
     """
 
     enabled: bool = Field(default=False, description="Enable multi-cycle mode")
@@ -86,10 +89,13 @@ class DriveCycleConfig(BaseModel):
 
 class SimulationConfig(BaseModel):
     """Core scenario definition: channels, faults, power states, and drive cycle settings."""
-    scenario_id: str = "default"
-    name: str = "Default Scenario"
+    scenario_id: str = "quick_demo"
+    name: str = "Quick Demo"
     description: str = ""
-    duration_s: float = 60.0
+    duration_s: float = Field(
+        default=60.0,
+        description="Scenario duration in seconds (single-cycle mode). Ignored when drive_cycle.enabled is true.",
+    )
     sample_interval_ms: float = 100.0
     seed: int = 42
     bus_voltage_nominal: float = Field(
@@ -141,7 +147,7 @@ class FeatureConfig(BaseModel):
     min_duration_s: float = Field(
         default=1.0, description="Minimum data duration before features are valid"
     )
-    # Legacy sample-count fields — used if > 0, else auto-computed from duration
+    # Sample-count overrides — if > 0, used instead of auto-computed values
     window_size: int = Field(
         default=0, description="Override: fixed window in samples (0=auto from duration)"
     )
@@ -174,33 +180,161 @@ class StorageConfig(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Fleet config — multi-vehicle simulation
+# ---------------------------------------------------------------------------
+
+
+class RegionalWeatherConfig(BaseModel):
+    """Climate profile for a geographic region."""
+
+    ambient_temp_mean_c: float = Field(default=15.0, description="Annual mean ambient temperature °C")
+    ambient_temp_std_c: float = Field(default=8.0, ge=0, description="Day-to-day σ °C")
+    seasonal_amplitude_c: float = Field(
+        default=10.0,
+        ge=0,
+        description="Half-amplitude of the seasonal sinusoidal swing (±°C around mean)",
+    )
+    season_peak_day: int = Field(
+        default=200,
+        ge=1,
+        le=365,
+        description="Day of year when temperature peaks (200 ≈ mid-July for northern hemisphere)",
+    )
+    supply_voltage_mean_v: float = Field(default=13.5, description="Mean bus voltage V")
+    supply_voltage_std_v: float = Field(default=0.3, ge=0, description="Bus voltage σ V")
+
+
+class VehicleArchetypeConfig(BaseModel):
+    """A vehicle population segment — sampled to produce individual vehicle specs."""
+
+    id: str = Field(description="Unique archetype identifier used in manifest and tags")
+    weight: float = Field(default=1.0, gt=0, description="Relative weight in fleet sampling")
+    profile: str = Field(
+        default="mixed",
+        description="Driving profile: commuter | mixed | heavy",
+    )
+    age_months_min: int = Field(default=0, ge=0, description="Min vehicle age in months")
+    age_months_max: int = Field(default=24, ge=0, description="Max vehicle age in months")
+    region: str = Field(
+        default="temperate",
+        description="Region key — must match a key in fleet.regions",
+    )
+    fault_rate_overrides: dict[str, float] = Field(
+        default_factory=dict,
+        description=(
+            "Override specific fault rates for this archetype. "
+            "Keys must match FaultRateConfig field names. "
+            "Example: {connector_aging: 0.04} for an aged fleet."
+        ),
+    )
+
+
+class FleetConfig(BaseModel):
+    """Fleet-scale generation settings.
+
+    When present as the ``fleet`` key in a GeneratorConfig, activates fleet mode:
+    multiple vehicles generated in parallel from population archetypes with
+    regional weather correlation.
+    """
+
+    n_vehicles: int = Field(default=50, ge=1, description="Total vehicles to simulate")
+    seed: int = Field(default=42, description="Master seed for reproducible fleet sampling")
+    start_date: str = Field(
+        default="2026-01-01",
+        description="Calendar start date for all vehicles (ISO-8601: YYYY-MM-DD)",
+    )
+    duration_days: int = Field(default=90, ge=1, description="Simulation span in days per vehicle")
+    max_workers: int = Field(
+        default=4,
+        ge=1,
+        description="Parallel workers for vehicle generation (ProcessPoolExecutor)",
+    )
+    write_combined: bool = Field(
+        default=False,
+        description=(
+            "If True, concatenate all vehicles into fleet_telemetry.parquet / "
+            "fleet_labels.parquet.  Disabled by default for large fleets."
+        ),
+    )
+    archetypes: list[VehicleArchetypeConfig] = Field(
+        default_factory=lambda: [
+            VehicleArchetypeConfig(
+                id="commuter",
+                weight=0.5,
+                profile="commuter",
+                age_months_min=0,
+                age_months_max=36,
+                region="temperate",
+            ),
+            VehicleArchetypeConfig(
+                id="heavy",
+                weight=0.3,
+                profile="heavy",
+                age_months_min=12,
+                age_months_max=60,
+                region="temperate",
+                fault_rate_overrides={"connector_aging": 0.03, "gradual_degradation": 0.02},
+            ),
+            VehicleArchetypeConfig(
+                id="nordic_aged",
+                weight=0.2,
+                profile="commuter",
+                age_months_min=24,
+                age_months_max=72,
+                region="nordic",
+                fault_rate_overrides={"cold_crank": 1.5, "connector_aging": 0.04},
+            ),
+        ]
+    )
+    regions: dict[str, RegionalWeatherConfig] = Field(
+        default_factory=lambda: {
+            "temperate": RegionalWeatherConfig(
+                ambient_temp_mean_c=13.0,
+                ambient_temp_std_c=7.0,
+                seasonal_amplitude_c=12.0,
+                season_peak_day=196,
+            ),
+            "nordic": RegionalWeatherConfig(
+                ambient_temp_mean_c=3.0,
+                ambient_temp_std_c=9.0,
+                seasonal_amplitude_c=18.0,
+                season_peak_day=196,
+            ),
+            "mediterranean": RegionalWeatherConfig(
+                ambient_temp_mean_c=18.0,
+                ambient_temp_std_c=6.0,
+                seasonal_amplitude_c=10.0,
+                season_peak_day=196,
+            ),
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
 # Top-level config
 # ---------------------------------------------------------------------------
 
 
 class GeneratorConfig(BaseModel):
-    """Top-level config for the standalone data generator."""
+    """Top-level config — drives all generation modes.
+
+    Single-vehicle mode uses ``simulation`` + ``features`` + ``storage``.
+    Fleet mode is activated when the ``fleet`` key is present.
+    Extra YAML keys are silently ignored for forward-compatibility.
+    """
+
+    model_config = {"extra": "ignore"}
 
     simulation: SimulationConfig = Field(default_factory=SimulationConfig)
     features: FeatureConfig = Field(default_factory=FeatureConfig)
     storage: StorageConfig = Field(default_factory=StorageConfig)
+    fleet: Optional[FleetConfig] = Field(
+        default=None,
+        description="Fleet settings — when present, activates multi-vehicle fleet mode.",
+    )
 
 
-# Keep PlatformConfig as an alias so existing YAML files (which may have
-# extra top-level keys like 'model', 'edge', 'mqtt') still parse cleanly —
-# Pydantic simply ignores unknown fields by default.
-class PlatformConfig(GeneratorConfig):
-    """Superset of GeneratorConfig — tolerates extra top-level YAML keys."""
-
-    model_config = {"extra": "ignore"}
-
-
-# ---------------------------------------------------------------------------
-# Loader
-# ---------------------------------------------------------------------------
-
-
-def load_config(path: str | Path) -> PlatformConfig:
+def load_config(path: str | Path) -> GeneratorConfig:
     """Load a GeneratorConfig from a YAML or JSON file.
 
     After parsing, resolves the topology:
@@ -214,19 +348,19 @@ def load_config(path: str | Path) -> PlatformConfig:
     return load_config_data(raw)
 
 
-def load_config_data(raw: dict) -> PlatformConfig:
+def load_config_data(raw: dict) -> GeneratorConfig:
     """Validate config data from an in-memory mapping and resolve topology."""
-    cfg = PlatformConfig.model_validate(raw)
+    cfg = GeneratorConfig.model_validate(raw)
     _resolve_topology(cfg)
     return cfg
 
 
-def default_config() -> PlatformConfig:
+def default_config() -> GeneratorConfig:
     """Return a sensible default config for quick starts."""
-    return PlatformConfig()
+    return GeneratorConfig()
 
 
-def _resolve_topology(cfg: PlatformConfig) -> None:
+def _resolve_topology(cfg: GeneratorConfig) -> None:
     """Populate simulation channels from topology or channel_specs."""
     from efuse_datagen.config.catalog import build_channels, example_topology
 
@@ -243,3 +377,6 @@ def _resolve_topology(cfg: PlatformConfig) -> None:
         return
 
     # Otherwise: use explicit channels list as-is
+
+
+

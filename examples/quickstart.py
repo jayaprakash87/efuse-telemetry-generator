@@ -25,7 +25,7 @@ from efuse_datagen.storage.writer import StorageWriter
 # --------------------------------------------------------------------------
 # 1. Load a scenario (or use the programmatic API)
 # --------------------------------------------------------------------------
-platform = load_bundled_config("default")
+platform = load_bundled_config("quick_demo")
 sim_cfg = platform.simulation
 feat_cfg = platform.features
 

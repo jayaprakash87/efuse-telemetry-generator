@@ -1,4 +1,7 @@
-# One-Month Mixed Driving Profile — Multi-Cycle Scenario
+# Multi-Day — full 65-channel zone controller, 30 days of realistic driving
+# Stochastic faults, variable trip lengths, ~70-90 ignition cycles
+#
+# Progression: quick_demo → single_drive → multi_day → fleet → stress_test
 #
 # Realistic 30-day driving simulation with the full 65-channel ZC topology.
 # The drive_cycle planner auto-generates:
@@ -10,8 +13,8 @@
 # ~70-90 drive cycles, ~30-50 h total driving, ~10-15 M rows at 1 s interval.
 
 simulation:
-  scenario_id: one_month_mixed
-  name: "One Month — Mixed Driving Profile"
+  scenario_id: multi_day_mixed
+  name: "Multi-Day — Mixed Driving Profile"
   description: >
     30-day multi-cycle simulation with variable trip counts, durations,
     and driving conditions.  Fault injection is fully stochastic —

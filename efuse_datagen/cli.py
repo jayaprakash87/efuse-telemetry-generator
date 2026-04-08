@@ -1,23 +1,25 @@
 """CLI for eFuse Telemetry Generator.
 
 Example usage:
-    efuse-gen
-    efuse-gen --config zone_controller_full
-    efuse-gen --config one_month
-    efuse-gen --config default --output my_run/ --format csv
-    efuse-gen --config default --duration 120 --seed 99
+    efuse-gen                                     # quick_demo (3 ch, 60 s)
+    efuse-gen --config single_drive               # 65 ch, one ignition cycle
+    efuse-gen --config multi_day                   # 65 ch, 30 days
+    efuse-gen --config fleet                       # 100 vehicles × 90 days
+    efuse-gen --config fleet --vehicles 5 --days 7 # small fleet test
+    efuse-gen --list-configs                       # show all built-in configs
 
 The generator produces:
-    <output>/<run_id>/telemetry.parquet         raw per-sample eFuse signals
-    <output>/<run_id>/features.parquet          rolling derived features
-    <output>/<run_id>/labels.parquet            ground-truth fault windows
-    <output>/<run_id>/channel_manifest.parquet  per-channel metadata for the dashboard
-    <output>/<run_id>/drive_cycles.parquet      multi-cycle schedule metadata (optional)
-    <output>/<run_id>/config.yaml               snapshot of the config used
+    <output>/<config>_<timestamp>/telemetry.parquet         raw per-sample eFuse signals
+    <output>/<config>_<timestamp>/features.parquet          rolling derived features
+    <output>/<config>_<timestamp>/labels.parquet            ground-truth fault windows
+    <output>/<config>_<timestamp>/channel_manifest.parquet  per-channel metadata
+    <output>/<config>_<timestamp>/drive_cycles.parquet      multi-cycle schedule (optional)
+    <output>/<config>_<timestamp>/config.yaml               snapshot of the config used
 """
 
 from __future__ import annotations
 
+import multiprocessing
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -29,7 +31,7 @@ from rich.console import Console
 from efuse_datagen.config.builtin import list_bundled_configs, load_bundled_config
 from efuse_datagen.config.models import (
     FeatureConfig,
-    PlatformConfig,
+    GeneratorConfig,
     SimulationConfig,
     StorageConfig,
     load_config,
@@ -55,7 +57,7 @@ def generate(
         None,
         "--config",
         "-c",
-        help="Path to YAML scenario config, or a built-in config name such as default or one_month.",
+        help="Path to YAML config, or a built-in name: quick_demo, single_drive, multi_day, fleet, stress_test.",
     ),
     list_configs: bool = typer.Option(
         False,
@@ -78,13 +80,36 @@ def generate(
         None,
         "--duration",
         "-d",
-        help="Override scenario duration in seconds.",
+        help="Override scenario duration in seconds (single-vehicle mode).",
     ),
     seed: Optional[int] = typer.Option(
         None,
         "--seed",
         "-s",
         help="Override random seed for reproducibility.",
+    ),
+    # Fleet-specific options (only used when config has fleet: key)
+    n_vehicles: Optional[int] = typer.Option(
+        None,
+        "--vehicles",
+        "-n",
+        help="Override fleet vehicle count (fleet mode only).",
+    ),
+    duration_days: Optional[int] = typer.Option(
+        None,
+        "--days",
+        help="Override fleet duration in days (fleet mode only).",
+    ),
+    max_workers: Optional[int] = typer.Option(
+        None,
+        "--workers",
+        "-w",
+        help="Override fleet parallel workers (fleet mode only).",
+    ),
+    write_combined: bool = typer.Option(
+        False,
+        "--combined",
+        help="Write combined fleet_telemetry.parquet (fleet mode only).",
     ),
     json_log: bool = typer.Option(
         False,
@@ -105,15 +130,22 @@ def generate(
     configure_logging(json_format=json_log)
     log = get_logger(__name__)
 
-    run_id = datetime.now().strftime("%Y%m%d-%H%M%S-") + _short_id()
+    # Load config
+    cfg, config_name = _load_requested_config(config)
+
+    # Route to fleet mode if config has fleet section
+    if cfg.fleet is not None:
+        _run_fleet(cfg, config_name, output, n_vehicles, duration_days, max_workers, seed, write_combined, log)
+        return
+
+    # ── Single-vehicle mode ──────────────────────────────────────
+    sim_cfg: SimulationConfig = cfg.simulation
+    feat_cfg: FeatureConfig = cfg.features
+    store_cfg: StorageConfig = cfg.storage
+
+    run_id = f"{config_name}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
     out_dir = output / run_id
     out_dir.mkdir(parents=True, exist_ok=True)
-
-    # Load config
-    platform_cfg = _load_requested_config(config)
-    sim_cfg: SimulationConfig = platform_cfg.simulation
-    feat_cfg: FeatureConfig = platform_cfg.features
-    store_cfg: StorageConfig = platform_cfg.storage
 
     # CLI overrides
     if duration is not None:
@@ -196,7 +228,7 @@ def generate(
         )
 
     # ------------------------------------------------------------------
-    # Single-cycle mode (legacy / default)
+    # Single-cycle mode (default)
     # ------------------------------------------------------------------
     else:
         console.print(
@@ -249,30 +281,102 @@ def generate(
     console.print()
 
 
-def _short_id(length: int = 6) -> str:
-    import random
-    import string
-    return "".join(random.choices(string.ascii_lowercase + string.digits, k=length))
-
-
-def _load_requested_config(config: str | None) -> PlatformConfig:
-    """Load either a filesystem config or one of the packaged built-in configs."""
+def _load_requested_config(config: str | None) -> tuple[GeneratorConfig, str]:
+    """Load config and return (config, config_name) for output naming."""
     if config is None:
-        return load_bundled_config("default")
+        return load_bundled_config("quick_demo"), "quick_demo"
 
     candidate = Path(config).expanduser()
     if candidate.exists():
-        return load_config(candidate)
+        name = candidate.stem
+        return load_config(candidate), name
 
     config_key = Path(config).stem
     bundled = list_bundled_configs()
     if config_key in bundled:
-        return load_bundled_config(config_key)
+        return load_bundled_config(config_key), config_key
 
     choices = ", ".join(bundled)
     raise typer.BadParameter(
         f"Config '{config}' not found. Use a filesystem path or one of: {choices}."
     )
+
+
+def _run_fleet(
+    cfg: GeneratorConfig,
+    config_name: str,
+    output: Path,
+    n_vehicles: int | None,
+    duration_days: int | None,
+    max_workers: int | None,
+    seed: int | None,
+    write_combined: bool,
+    log,
+) -> None:
+    """Run fleet-scale generation (invoked when config has a fleet: section)."""
+    from rich.progress import BarColumn, Progress, TextColumn, TimeRemainingColumn
+
+    from efuse_datagen.simulation.fleet import FleetRunner
+
+    fleet = cfg.fleet
+    assert fleet is not None
+
+    # CLI overrides
+    overrides: dict = {}
+    if n_vehicles is not None:
+        overrides["n_vehicles"] = n_vehicles
+    if duration_days is not None:
+        overrides["duration_days"] = duration_days
+    if max_workers is not None:
+        overrides["max_workers"] = max_workers
+    if seed is not None:
+        overrides["seed"] = seed
+    if write_combined:
+        overrides["write_combined"] = True
+    if overrides:
+        cfg = cfg.model_copy(update={"fleet": fleet.model_copy(update=overrides)})
+        fleet = cfg.fleet
+
+    run_id = f"{config_name}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+
+    console.rule("[bold cyan]eFuse Fleet Generator")
+    console.print(f"  Vehicles    : {fleet.n_vehicles}")
+    console.print(f"  Duration    : {fleet.duration_days} days")
+    console.print(f"  Start date  : {fleet.start_date}")
+    console.print(f"  Archetypes  : {len(fleet.archetypes)}")
+    console.print(f"  Regions     : {', '.join(fleet.regions)}")
+    console.print(f"  Workers     : {fleet.max_workers}")
+    console.print(f"  Output      : {output / run_id}/")
+    console.print()
+
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%  {task.completed}/{task.total}"),
+        TimeRemainingColumn(),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Vehicles", total=fleet.n_vehicles)
+
+        def _cb(done: int, total: int) -> None:
+            progress.update(task, completed=done)
+
+        runner = FleetRunner(cfg, output_dir=output, progress_callback=_cb)
+        manifest_df = runner.run(run_id=run_id)
+
+    ok = len(manifest_df[manifest_df["status"] == "ok"])
+    total_rows = manifest_df["n_telemetry_rows"].sum()
+    total_hours = manifest_df["driving_hours"].sum()
+    total_labels = manifest_df["n_fault_labels"].sum()
+
+    console.print()
+    console.rule("[bold green]Fleet generation complete")
+    console.print(f"  Vehicles    : {ok}/{fleet.n_vehicles} succeeded")
+    console.print(f"  Telemetry   : {total_rows:,} rows")
+    console.print(f"  Fault labels: {total_labels:,}")
+    console.print(f"  Vehicle-hrs : {total_hours:,.1f}")
+    console.print(f"  Manifest    : {output / run_id}/fleet_manifest.parquet")
+    console.print()
 
 
 # ---------------------------------------------------------------------------
@@ -348,7 +452,7 @@ def ingest(
     else:
         tel_df = adapter.load(source, channel_id=channel_id)
 
-    run_id = datetime.now().strftime("%Y%m%d-%H%M%S-") + _short_id()
+    run_id = f"ingest_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
     run_dir = output / run_id
 
     save_as_run(
@@ -366,6 +470,7 @@ def ingest(
 
 
 def main() -> None:
+    multiprocessing.freeze_support()
     app()
 
 

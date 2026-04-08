@@ -7,12 +7,13 @@ from pathlib import Path
 
 import yaml
 
-from efuse_datagen.config.models import PlatformConfig, load_config_data
+from efuse_datagen.config.models import GeneratorConfig, load_config_data
 
 BUILTIN_CONFIGS: dict[str, str] = {
-    "default": "default.yaml",
-    "zone_controller_full": "zone_controller_full.yaml",
-    "one_month": "one_month.yaml",
+    "quick_demo": "quick_demo.yaml",
+    "single_drive": "single_drive.yaml",
+    "multi_day": "multi_day.yaml",
+    "fleet": "fleet.yaml",
     "stress_test": "stress_test.yaml",
 }
 
@@ -22,9 +23,10 @@ def list_bundled_configs() -> dict[str, str]:
     return BUILTIN_CONFIGS.copy()
 
 
-def load_bundled_config(config_name: str) -> PlatformConfig:
+def load_bundled_config(config_name: str) -> GeneratorConfig:
     """Load one of the packaged built-in scenario configs."""
     key = Path(config_name).stem
+
     if key not in BUILTIN_CONFIGS:
         choices = ", ".join(BUILTIN_CONFIGS)
         raise KeyError(f"Unknown built-in config '{config_name}'. Choose one of: {choices}")

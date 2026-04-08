@@ -20,7 +20,6 @@ def main() -> None:
     if args.output_root:
         output_root = str(Path(args.output_root).expanduser())
         os.environ["EFUSE_TELEMETRY_OUTPUT_DIR"] = output_root
-        os.environ["VIP_DATA_GENERATOR_OUTPUT_DIR"] = output_root
 
     try:
         from streamlit.web import bootstrap

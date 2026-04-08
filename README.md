@@ -93,13 +93,13 @@ efuse-gen
 efuse-gen --list-configs
 
 # 65-channel full ZC topology (300 s, 21 fault injections)
-efuse-gen --config zone_controller_full
+efuse-gen --config single_drive
 
 # Override duration and seed
-efuse-gen --config default --duration 120 --seed 99
+efuse-gen --config quick_demo --duration 120 --seed 99
 
 # CSV output
-efuse-gen --config default --format csv
+efuse-gen --config quick_demo --format csv
 
 # Filesystem paths still work too
 efuse-gen --config ./my-custom-scenario.yaml
@@ -109,10 +109,10 @@ efuse-gen --config ./my-custom-scenario.yaml
 
 ```bash
 # 30-day mixed driving profile (~55 cycles, ~37 h driving, ~8.6 M rows)
-efuse-gen --config one_month
+efuse-gen --config multi_day
 ```
 
-Multi-cycle mode is auto-detected when the config has `drive_cycle.enabled: true`. The CLI accepts either a filesystem path or a packaged config name (`default`, `zone_controller_full`, `one_month`, `stress_test`).
+Multi-cycle mode is auto-detected when the config has `drive_cycle.enabled: true`. The CLI accepts either a filesystem path or a packaged config name (`quick_demo`, `single_drive`, `multi_day`, `fleet`, `stress_test`).
 
 ### Common Options
 
@@ -125,7 +125,7 @@ Multi-cycle mode is auto-detected when the config has `drive_cycle.enabled: true
 --json-log            Structured JSON logging
 ```
 
-Output is written to `output/<YYYYMMDD-HHMMSS-xxxxx>/` — each run is isolated.
+Output is written to `output/<config>_<YYYYMMDD-HHMMSS>/` — each run is isolated and named after the config used.
 
 ## Quickstart
 
@@ -149,7 +149,7 @@ Alternative repo-local launch:
 streamlit run dashboard/app.py
 ```
 
-The dashboard reads `output/` from the current working directory by default. Set `EFUSE_TELEMETRY_OUTPUT_DIR=/path/to/output` to point it elsewhere. The older `VIP_DATA_GENERATOR_OUTPUT_DIR` variable is still accepted for compatibility.
+The dashboard reads `output/` from the current working directory by default. Set `EFUSE_TELEMETRY_OUTPUT_DIR=/path/to/output` to point it elsewhere.
 
 | Tab | Contents |
 |-----|----------|
@@ -186,9 +186,10 @@ Ingested runs appear in the dashboard alongside synthetic runs, with a data-sour
 
 | Config | Description |
 |--------|-------------|
-| [`default`](efuse_datagen/config/templates/default.yaml) | 3-channel mixed-fault demo (60 s) |
-| [`zone_controller_full`](efuse_datagen/config/templates/zone_controller_full.yaml) | 65-channel 4-zone topology, 300 s, 21 fault injections |
-| [`one_month`](efuse_datagen/config/templates/one_month.yaml) | 30-day multi-cycle simulation (~8.6 M rows) |
+| [`quick_demo`](efuse_datagen/config/templates/quick_demo.yaml) | 3-channel mixed-fault demo (60 s) |
+| [`single_drive`](efuse_datagen/config/templates/single_drive.yaml) | 65-channel 4-zone topology, 300 s, 21 fault injections |
+| [`multi_day`](efuse_datagen/config/templates/multi_day.yaml) | 30-day multi-cycle simulation (~8.6 M rows) |
+| [`fleet`](efuse_datagen/config/templates/fleet.yaml) | 100 vehicles × 90 days, parallel generation with regional weather |
 | [`stress_test`](efuse_datagen/config/templates/stress_test.yaml) | All fault types on a single channel (120 s) |
 
 ## Project Structure
