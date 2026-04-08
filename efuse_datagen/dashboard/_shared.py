@@ -89,7 +89,7 @@ def render_data_source_banner(run_dir: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=300)
 def load_run(run_dir: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     p = Path(run_dir)
 
@@ -130,7 +130,7 @@ def load_run(run_dir: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     return tel, feat, lab
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=300)
 def load_manifest(run_dir: str) -> pd.DataFrame | None:
     p = Path(run_dir) / "channel_manifest.parquet"
     if not p.exists():
@@ -138,7 +138,7 @@ def load_manifest(run_dir: str) -> pd.DataFrame | None:
     return pd.read_parquet(p)
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=300)
 def load_drive_cycles(run_dir: str) -> pd.DataFrame | None:
     p = Path(run_dir) / "drive_cycles.parquet"
     if not p.exists():
@@ -187,7 +187,7 @@ def is_fleet_run(run_dir: str) -> bool:
     return (Path(run_dir) / "fleet_manifest.parquet").exists()
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=300)
 def load_fleet_manifest(run_dir: str) -> pd.DataFrame:
     """Load the fleet manifest — one row per vehicle with summary stats."""
     return pd.read_parquet(Path(run_dir) / "fleet_manifest.parquet")
@@ -204,14 +204,14 @@ def list_fleet_vehicles(run_dir: str) -> list[str]:
     )
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=300)
 def load_fleet_vehicle(run_dir: str, vehicle_id: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Load telemetry, features, labels for a single fleet vehicle."""
     v_dir = Path(run_dir) / "vehicles" / vehicle_id
     return load_run(str(v_dir))
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=300)
 def load_fleet_combined(run_dir: str) -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
     """Load combined fleet telemetry and labels (if --combined was used)."""
     p = Path(run_dir)
@@ -225,7 +225,7 @@ def load_fleet_combined(run_dir: str) -> tuple[pd.DataFrame | None, pd.DataFrame
     return tel, lab
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=300)
 def load_regional_weather(run_dir: str) -> dict[str, pd.DataFrame]:
     """Load regional weather timelines from a fleet run."""
     regions_dir = Path(run_dir) / "regions"
