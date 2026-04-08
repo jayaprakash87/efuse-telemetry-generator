@@ -7,6 +7,9 @@ from efuse_datagen.config.models import (
     DriveCycleConfig,
     FeatureConfig,
     FleetConfig,
+    GeneratorConfig,
+    SimulationConfig,
+    StorageConfig,
     VehicleArchetypeConfig,
 )
 from efuse_datagen.schemas.telemetry import ChannelMeta
@@ -145,3 +148,30 @@ class TestFeatureConfigValidation:
     def test_negative_min_periods_rejected(self):
         with pytest.raises(ValidationError, match="min_periods must be >= 0"):
             FeatureConfig(min_periods=-1)
+
+
+# ---------------------------------------------------------------------------
+# Extra-field rejection (extra: "forbid")
+# ---------------------------------------------------------------------------
+
+
+class TestExtraFieldRejection:
+    def test_generator_config_rejects_extra_keys(self):
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            GeneratorConfig.model_validate({"simulation": {}, "bogus_key": 42})
+
+    def test_simulation_config_rejects_extra_keys(self):
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            SimulationConfig(scenario_id="test", typo_field="oops")
+
+    def test_storage_config_rejects_extra_keys(self):
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            StorageConfig(output_dir="output", fomat="csv")
+
+    def test_valid_generator_config_accepted(self):
+        cfg = GeneratorConfig.model_validate({
+            "simulation": {"scenario_id": "test"},
+            "features": {},
+            "storage": {},
+        })
+        assert cfg.simulation.scenario_id == "test"

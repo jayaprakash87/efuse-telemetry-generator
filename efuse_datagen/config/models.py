@@ -101,6 +101,9 @@ class DriveCycleConfig(BaseModel):
 
 class SimulationConfig(BaseModel):
     """Core scenario definition: channels, faults, power states, and drive cycle settings."""
+
+    model_config = {"extra": "forbid"}
+
     scenario_id: str = "quick_demo"
     name: str = "Quick Demo"
     description: str = ""
@@ -199,6 +202,9 @@ class FeatureConfig(BaseModel):
 
 class StorageConfig(BaseModel):
     """Output persistence settings: directory and file format."""
+
+    model_config = {"extra": "forbid"}
+
     output_dir: str = "output"
     format: str = "parquet"  # "parquet" | "csv" | "json"
 
@@ -379,10 +385,10 @@ class GeneratorConfig(BaseModel):
 
     Single-vehicle mode uses ``simulation`` + ``features`` + ``storage``.
     Fleet mode is activated when the ``fleet`` key is present.
-    Extra YAML keys are silently ignored for forward-compatibility.
+    Unknown YAML keys are rejected — typos surface as clear validation errors.
     """
 
-    model_config = {"extra": "ignore"}
+    model_config = {"extra": "forbid"}
 
     simulation: SimulationConfig = Field(default_factory=SimulationConfig)
     features: FeatureConfig = Field(default_factory=FeatureConfig)
