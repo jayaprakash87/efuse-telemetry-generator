@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Topology CLI** (`efuse-gen topology`) — new subcommand group with `import`, `export`, `template`, and `new` commands for managing vehicle topology YAML files from CSV/Excel/Parquet spreadsheets.
+- **`efuse-gen info` command** — display a config summary (channels, zones, faults, drive-cycle) without generating data.
+- **`--dry-run` flag** on `efuse-gen` — preview channel count, estimated rows, and output path without writing files.
+- **Reusable topology files** — `topology_file` field on `SimulationConfig` loads zones and channel_specs from a standalone YAML (bundled name or file path) with caching for fleet mode.
+- **Bundled topologies** — `bev_2zone_12ch` (compact) and `bev_4zone_65ch` (full) shipped in `config/topologies/`.
+- **New built-in scenario configs** — `custom_topology` and `custom_topology_with_catalog` templates demonstrating topology-file usage.
+- **Config templates README** — `config/templates/README.md` documenting all bundled scenario configs.
+- **`LoadType` enum** — `resistive`, `inductive`, `motor`, `ptc`, `capacitive`, `led`, `solenoid` replaces bare strings on `ChannelMeta` and `EFuseProfile`.
+- **`ChannelMeta.explain()`** — introspect field documentation programmatically.
+- **Top-level Python API** — `from efuse_datagen import generate, TelemetryGenerator, load_config` plus `__all__` and a one-call `generate()` convenience function.
+- **Output README** — each run directory now includes a `README.md` describing its files, row counts, and quick-load snippets.
+- **`[excel]` optional extra** — `openpyxl` dependency for `.xlsx` topology import.
+- **Topology IO module** (`efuse_datagen/config/topology_io.py`) — import/export logic with fuzzy column-header aliases, type coercion, and unknown-family warnings.
+- **Topology IO tests** — `tests/test_topology_io.py` covering import, export, aliased headers, roundtrip, type coercion, and error cases.
+- **Docs index page** (`docs/index.md`) — "Where to Start" landing page with role-based reading paths.
+- **Quickstart guide expanded** — full PyPI install-to-dashboard walkthrough in `docs/quickstart.md`.
+
+### Changed
+- **`efuse-ingest` entry point removed** — ingestion is now exclusively available as `efuse-gen ingest`.
+- **`use_example_topology` removed** — replaced by `topology_file` field; old configs must migrate.
+- **Fleet-only flags now error** instead of printing a warning when used with single-vehicle configs.
+- Topology conflict detection — providing `topology_file`, `channel_specs`, and/or `channels` simultaneously now raises a clear error.
+- `DriveCycleConfig.profile` and `VehicleArchetypeConfig.profile` now use `Literal["commuter", "mixed", "heavy"]` instead of bare `str`.
+- `StorageConfig.format` now uses `Literal["parquet", "csv", "json"]` instead of bare `str`.
+- `extra = "forbid"` added to `FaultRateConfig`, `FeatureConfig`, and `RegionalWeatherConfig` models.
+- Zone cross-reference validation — `build_channels()` now raises upfront on orphan `zone_id` references.
+- Enum coercion in catalog — raw string values for `load_type`, `driver_type`, `power_class`, `source_protocol` are auto-coerced to their enum types.
+- Topology YAML bundled in sdist — `MANIFEST.in` and `pyproject.toml` `package-data` updated.
+- Built-in template configs (`fleet.yaml`, `multi_day.yaml`, `single_drive.yaml`) updated to use `topology_file`.
+- Catalog module docstring and example topology factory moved to `topology_io` / bundled YAML files.
+- README updated with PyPI install instructions, developer-setup section, and quickstart link.
+- Docs (`architecture.md`, `configuration.md`, `dashboard.md`, `data-model.md`, `drive-cycles.md`, `onboarding.md`) refreshed.
+
 ## [1.0.0] — 2026-04-09
 
 ### Changed
