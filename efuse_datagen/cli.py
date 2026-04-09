@@ -113,7 +113,7 @@ def topology_import(
     console.print(f"  Output: [cyan]{output}[/cyan]")
     console.print()
     console.print("Use it in a scenario config:")
-    console.print(f"  simulation:")
+    console.print("  simulation:")
     console.print(f"    topology_file: ./{output.name}")
 
 
@@ -237,7 +237,7 @@ def topology_new(
     )
     console.print()
     console.print("Reference it in your scenario config:")
-    console.print(f"  simulation:")
+    console.print("  simulation:")
     console.print(f"    topology_file: ./{output.name}")
 
 
@@ -314,7 +314,7 @@ def info(
     if sim.drive_cycle.enabled:
         dc = sim.drive_cycle
         console.print()
-        console.print(f"  [bold]Drive cycle:[/bold]")
+        console.print("  [bold]Drive cycle:[/bold]")
         console.print(f"    Days      : {dc.total_days}")
         console.print(f"    Profile   : {dc.profile}")
 
@@ -322,7 +322,7 @@ def info(
     if is_fleet:
         fleet = cfg.fleet
         console.print()
-        console.print(f"  [bold]Fleet:[/bold]")
+        console.print("  [bold]Fleet:[/bold]")
         console.print(f"    Vehicles  : {fleet.n_vehicles}")
         console.print(f"    Days      : {fleet.duration_days}")
         console.print(f"    Archetypes: {len(fleet.archetypes)}")
@@ -331,7 +331,7 @@ def info(
 
     # Storage
     console.print()
-    console.print(f"  [bold]Output:[/bold]")
+    console.print("  [bold]Output:[/bold]")
     console.print(f"    Format    : {cfg.storage.format}")
     console.print(f"    Directory : {cfg.storage.output_dir}")
 

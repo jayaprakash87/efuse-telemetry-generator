@@ -1,7 +1,6 @@
 """Tests for CLI input validation — format, range checks, mode-mismatch warnings."""
 
 import re
-from unittest.mock import patch
 
 from typer.testing import CliRunner
 

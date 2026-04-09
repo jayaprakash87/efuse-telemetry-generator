@@ -4,10 +4,6 @@ from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import pandas as pd
 
 try:
     __version__ = version("efuse-telemetry-generator")

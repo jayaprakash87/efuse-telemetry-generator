@@ -117,8 +117,8 @@ def _read_tabular(path: Path) -> list[dict[str, Any]]:
             df = pd.read_excel(path, dtype=str, keep_default_na=False)
         except ImportError as exc:
             raise ImportError(
-                f"Reading Excel files requires the 'openpyxl' package. "
-                f"Install it with:  pip install openpyxl"
+                "Reading Excel files requires the 'openpyxl' package. "
+                "Install it with:  pip install openpyxl"
             ) from exc
     elif suffix == ".parquet":
         df = pd.read_parquet(path).astype(str)
