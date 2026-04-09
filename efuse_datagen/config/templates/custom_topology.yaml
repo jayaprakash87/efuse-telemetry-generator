@@ -1,0 +1,155 @@
+# Custom Topology — bring your own Zone Controller architecture
+#
+# Fully explicit: zones + channels + electrical parameters defined here.
+# No built-in IC catalog or reference topology is used.
+# Example: a 2-zone, 6-channel ZC architecture for a compact BEV.
+
+simulation:
+  scenario_id: custom_topology
+  name: "Custom Topology Example"
+  description: >
+    User-defined Zone Controller architecture with explicit parameters.
+    No catalog lookup, no built-in topology — fully self-contained.
+    Demonstrates a 2-zone, 6-channel layout that an OEM might define
+    for their specific vehicle platform.
+  duration_s: 120.0
+  sample_interval_ms: 100.0
+  seed: 42
+
+  # Zone Controllers
+  zones:
+    - zone_id: zone_front
+      name: "Front Zone Controller"
+      location: front
+      bus_interface: can            # CAN / XCP / replay
+    - zone_id: zone_rear
+      name: "Rear Zone Controller"
+      location: rear
+      bus_interface: can
+
+  # Channels (one eFuse output per load)
+  channels:
+    # Front Zone
+    - channel_id: ch_01
+      zone_id: zone_front           # maps to zone defined above
+      system_cluster: lighting
+      load_name: headlamp_left
+      load_type: resistive
+      nominal_current_a: 6.0
+      max_current_a: 15.0
+      nominal_voltage_v: 13.5
+      fuse_rating_a: 10.0
+      # Electrical parameters — from your IC datasheet
+      r_ds_on_ohm: 0.008           # Rds,on at 25°C (Ω)
+      r_thermal_kw: 35.0            # Junction-to-ambient thermal resistance (K/W)
+      tau_thermal_s: 20.0           # RC thermal time constant (s)
+      # Wiring
+      wire_gauge_mm2: 1.0
+      run_length_m: 2.5
+      harness_r_ohm: 0.025
+      connector_r_ohm: 0.010
+
+    - channel_id: ch_02
+      zone_id: zone_front
+      system_cluster: chassis
+      load_name: wiper_motor
+      load_type: motor
+      nominal_current_a: 4.0
+      max_current_a: 12.0
+      nominal_voltage_v: 13.5
+      fuse_rating_a: 8.0
+      r_ds_on_ohm: 0.015
+      r_thermal_kw: 50.0
+      tau_thermal_s: 12.0
+      # Duty cycling — motor runs 2s on, 1s off
+      duty_cycle: 0.67
+      on_duration_s: 2.0
+      off_duration_s: 1.0
+      # Motor has inrush
+      inrush_factor: 3.0
+      inrush_duration_ms: 50.0
+
+    - channel_id: ch_03
+      zone_id: zone_front
+      system_cluster: climate
+      load_name: hvac_blower
+      load_type: motor
+      nominal_current_a: 8.0
+      max_current_a: 18.0
+      nominal_voltage_v: 13.5
+      fuse_rating_a: 15.0
+      r_ds_on_ohm: 0.010
+      r_thermal_kw: 40.0
+      tau_thermal_s: 15.0
+      t_ambient_c: 40.0            # Higher ambient near firewall
+
+    # Rear Zone
+    - channel_id: ch_04
+      zone_id: zone_rear
+      system_cluster: climate
+      load_name: seat_heater_driver
+      load_type: ptc
+      nominal_current_a: 10.0
+      max_current_a: 22.0
+      nominal_voltage_v: 13.5
+      fuse_rating_a: 15.0
+      r_ds_on_ohm: 0.006
+      r_thermal_kw: 30.0
+      tau_thermal_s: 25.0
+      t_ambient_c: 30.0
+
+    - channel_id: ch_05
+      zone_id: zone_rear
+      system_cluster: lighting
+      load_name: tail_lamp_left
+      load_type: led
+      nominal_current_a: 2.0
+      max_current_a: 5.0
+      nominal_voltage_v: 13.5
+      fuse_rating_a: 3.0
+      r_ds_on_ohm: 0.040
+      r_thermal_kw: 80.0
+      tau_thermal_s: 8.0
+
+    - channel_id: ch_06
+      zone_id: zone_rear
+      system_cluster: body
+      load_name: trunk_latch
+      load_type: solenoid
+      nominal_current_a: 3.0
+      max_current_a: 8.0
+      nominal_voltage_v: 13.5
+      fuse_rating_a: 5.0
+      r_ds_on_ohm: 0.020
+      r_thermal_kw: 60.0
+      tau_thermal_s: 10.0
+      inrush_factor: 5.0
+      inrush_duration_ms: 30.0
+
+  # Fault injections
+  fault_injections:
+    - channel_id: ch_01
+      fault_type: overload_spike
+      start_s: 20.0
+      duration_s: 3.0
+      intensity: 0.8
+
+    - channel_id: ch_04
+      fault_type: gradual_degradation
+      start_s: 40.0
+      duration_s: 50.0
+      intensity: 0.6
+
+    - channel_id: ch_02
+      fault_type: connector_aging
+      start_s: 60.0
+      duration_s: 30.0
+      intensity: 0.5
+
+features:
+  window_duration_s: 5.0
+  min_duration_s: 1.0
+
+storage:
+  output_dir: output
+  format: parquet

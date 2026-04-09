@@ -1,49 +1,32 @@
-# Multi-Day — full 65-channel zone controller, 30 days of realistic driving
-# Stochastic faults, variable trip lengths, ~70-90 ignition cycles
+# Multi-Day — 30 days of realistic driving, 65 channels, stochastic faults
 #
 # Progression: quick_demo → single_drive → multi_day → fleet → stress_test
 #
-# Realistic 30-day driving simulation with the full 65-channel ZC topology.
-# The drive_cycle planner auto-generates:
-#   - a realistic calendar of ignition cycles (0-6 trips/day)
-#   - per-cycle power-state sequences (SLEEP → CRANK → ACTIVE → SLEEP)
-#   - stochastic fault injection (Poisson rate per vehicle-hour)
-#   - daily ambient temperature variation (mean-reverting random walk)
+# Uses the bundled 4-zone / 65-channel BEV reference topology.
+# To use your own: topology_file: ./path/to/my_vehicle.yaml
 #
 # ~70-90 drive cycles, ~30-50 h total driving, ~10-15 M rows at 1 s interval.
 
 simulation:
   scenario_id: multi_day_mixed
-  name: "Multi-Day — Mixed Driving Profile"
-  description: >
-    30-day multi-cycle simulation with variable trip counts, durations,
-    and driving conditions.  Fault injection is fully stochastic —
-    connector aging and gradual degradation intensify over the month.
-  sample_interval_ms: 1000.0   # 1 s — practical for month-long data
+  name: "Multi-Day \u2014 Mixed Driving Profile"
+  description: "30-day multi-cycle simulation with variable trip counts, durations, and driving conditions.  Fault injection\
+    \ is fully stochastic \u2014 connector aging and gradual degradation intensify over the month.\n"
+  sample_interval_ms: 1000.0
   seed: 42
-  use_example_topology: true
-
+  topology_file: bev_4zone_65ch
   drive_cycle:
     enabled: true
     total_days: 30
-    profile: mixed               # commuter | mixed | heavy
-
-    # Schedule tuning
+    profile: mixed
     mean_trips_per_day: 2.5
     max_trips_per_day: 6
-    no_drive_day_probability: 0.10
-
-    # Trip duration (minutes) — log-normal
+    no_drive_day_probability: 0.1
     min_trip_minutes: 5
     max_trip_minutes: 240
     median_trip_minutes: 30
-
-    # Ambient temperature (°C) — seasonal baseline
     ambient_temp_mean_c: 18.0
     ambient_temp_std_c: 8.0
-
-    # Fault rates — probability per vehicle-hour of driving
-    # When Poisson draw fires, one eligible channel is randomly selected.
     fault_rates:
       overload_spike: 0.05
       intermittent_overload: 0.03
@@ -53,15 +36,16 @@ simulation:
       connector_aging: 0.01
       open_load: 0.005
       gradual_degradation: 0.01
-      cold_crank: 0.50           # conditional — only fires when ambient < 5 °C
+      cold_crank: 0.5
       jump_start: 0.002
       load_dump: 0.02
       thermal_coupling: 0.03
       wake_transient: 0.15
-
+      ground_offset: 0.02
+      short_to_ground: 0.01
+      dropped_packet: 0.03
 features:
   window_duration_s: 5.0
   min_duration_s: 1.0
-
 storage:
   output_dir: output

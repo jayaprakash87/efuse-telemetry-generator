@@ -1,122 +1,100 @@
-# Fleet — multiple vehicles over a shared timeline with regional weather
-# Population archetypes, age-dependent fault scaling, parallel generation
+# Fleet — multiple vehicles, shared timeline, regional weather, 65 channels
 #
 # Progression: quick_demo → single_drive → multi_day → fleet → stress_test
 #
+# Uses the bundled 4-zone / 65-channel BEV reference topology.
+# To use your own: topology_file: ./path/to/my_vehicle.yaml
+#
 # Usage:
 #   efuse-gen --config fleet
-#   efuse-gen --config fleet --vehicles 10 --days 14 --workers 2   # quick test
-#
-# Output layout:
-#   output/fleet_<timestamp>/
-#     fleet_manifest.parquet     vehicle_id, archetype, age, region, stats
-#     fleet_config.yaml
-#     regions/
-#       temperate_weather.parquet
-#       nordic_weather.parquet
-#       mediterranean_weather.parquet
-#     vehicles/
-#       v0001/  telemetry.parquet  labels.parquet  features.parquet  ...
-#       v0002/  ...
-#     fleet_telemetry.parquet    (if --combined)
-#     fleet_labels.parquet       (if --combined)
+#   efuse-gen --config fleet --vehicles 10 --days 14 --workers 2
 
 simulation:
   scenario_id: fleet_base
-  name: "Fleet Base Scenario"
-  sample_interval_ms: 1000.0   # 1 Hz — good balance of fidelity vs file size
-  seed: 0                      # overridden per-vehicle
-  use_example_topology: true   # 65-channel zone controller topology
-
+  name: Fleet Base Scenario
+  sample_interval_ms: 1000.0
+  seed: 0
+  topology_file: bev_4zone_65ch
   drive_cycle:
     enabled: true
-    total_days: 90             # overridden by fleet.duration_days
-    profile: mixed             # overridden per-archetype
+    total_days: 90
+    profile: mixed
     mean_trips_per_day: 2.5
     max_trips_per_day: 6
-    no_drive_day_probability: 0.10
+    no_drive_day_probability: 0.1
     min_trip_minutes: 5
     max_trip_minutes: 180
     median_trip_minutes: 28
-    ambient_temp_mean_c: 12.0  # overridden from regional weather
-    ambient_temp_std_c: 7.0    # overridden from regional weather
+    ambient_temp_mean_c: 12.0
+    ambient_temp_std_c: 7.0
     fault_rates:
       overload_spike: 0.05
       intermittent_overload: 0.03
       voltage_sag: 0.04
       thermal_drift: 0.02
       noisy_sensor: 0.03
-      connector_aging: 0.01    # scaled up by age_months in fleet runner
+      connector_aging: 0.01
       open_load: 0.005
       gradual_degradation: 0.01
-      cold_crank: 0.50
+      cold_crank: 0.5
       jump_start: 0.002
       load_dump: 0.02
       thermal_coupling: 0.03
       wake_transient: 0.15
-
 features:
   window_duration_s: 5.0
   min_duration_s: 1.0
-
-# ── Fleet section — presence of this key activates fleet mode ──────────
 fleet:
   n_vehicles: 100
   seed: 42
-  start_date: "2026-01-01"
+  start_date: '2026-01-01'
   duration_days: 90
   max_workers: 4
   write_combined: false
-
   archetypes:
-    - id: commuter_new
-      weight: 0.35
-      profile: commuter
-      age_months_min: 0
-      age_months_max: 18
-      region: temperate
-
-    - id: commuter_aged
-      weight: 0.20
-      profile: commuter
-      age_months_min: 30
-      age_months_max: 72
-      region: temperate
-      fault_rate_overrides:
-        connector_aging: 0.03
-        gradual_degradation: 0.02
-
-    - id: heavy_fleet_van
-      weight: 0.20
-      profile: heavy
-      age_months_min: 6
-      age_months_max: 36
-      region: temperate
-      fault_rate_overrides:
-        overload_spike: 0.08
-        intermittent_overload: 0.05
-        connector_aging: 0.025
-
-    - id: nordic_commuter
-      weight: 0.15
-      profile: commuter
-      age_months_min: 0
-      age_months_max: 48
-      region: nordic
-      fault_rate_overrides:
-        cold_crank: 1.5
-        thermal_drift: 0.04
-
-    - id: mediterranean_mixed
-      weight: 0.10
-      profile: mixed
-      age_months_min: 12
-      age_months_max: 60
-      region: mediterranean
-      fault_rate_overrides:
-        thermal_drift: 0.05
-        thermal_coupling: 0.05
-
+  - id: commuter_new
+    weight: 0.35
+    profile: commuter
+    age_months_min: 0
+    age_months_max: 18
+    region: temperate
+  - id: commuter_aged
+    weight: 0.2
+    profile: commuter
+    age_months_min: 30
+    age_months_max: 72
+    region: temperate
+    fault_rate_overrides:
+      connector_aging: 0.03
+      gradual_degradation: 0.02
+  - id: heavy_fleet_van
+    weight: 0.2
+    profile: heavy
+    age_months_min: 6
+    age_months_max: 36
+    region: temperate
+    fault_rate_overrides:
+      overload_spike: 0.08
+      intermittent_overload: 0.05
+      connector_aging: 0.025
+  - id: nordic_commuter
+    weight: 0.15
+    profile: commuter
+    age_months_min: 0
+    age_months_max: 48
+    region: nordic
+    fault_rate_overrides:
+      cold_crank: 1.5
+      thermal_drift: 0.04
+  - id: mediterranean_mixed
+    weight: 0.1
+    profile: mixed
+    age_months_min: 12
+    age_months_max: 60
+    region: mediterranean
+    fault_rate_overrides:
+      thermal_drift: 0.05
+      thermal_coupling: 0.05
   regions:
     temperate:
       ambient_temp_mean_c: 12.0
@@ -125,7 +103,6 @@ fleet:
       season_peak_day: 196
       supply_voltage_mean_v: 13.5
       supply_voltage_std_v: 0.25
-
     nordic:
       ambient_temp_mean_c: 2.0
       ambient_temp_std_c: 9.0
@@ -133,7 +110,6 @@ fleet:
       season_peak_day: 196
       supply_voltage_mean_v: 13.4
       supply_voltage_std_v: 0.3
-
     mediterranean:
       ambient_temp_mean_c: 18.0
       ambient_temp_std_c: 5.0

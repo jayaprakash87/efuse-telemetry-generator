@@ -11,6 +11,8 @@ from efuse_datagen.config.models import GeneratorConfig, load_config_data
 
 BUILTIN_CONFIGS: dict[str, str] = {
     "quick_demo": "quick_demo.yaml",
+    "custom_topology": "custom_topology.yaml",
+    "custom_topology_with_catalog": "custom_topology_with_catalog.yaml",
     "single_drive": "single_drive.yaml",
     "multi_day": "multi_day.yaml",
     "fleet": "fleet.yaml",

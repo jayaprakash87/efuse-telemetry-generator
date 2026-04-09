@@ -1,0 +1,144 @@
+# Custom Topology with Catalog Presets
+#
+# Define YOUR zone controller architecture but use the bundled eFuse IC
+# catalog for electrical parameters instead of specifying them manually.
+#
+# Workflow:
+#   1. Define zones (your vehicle architecture)
+#   2. Map channels to zones with load names
+#   3. Reference IC families from the catalog (e.g., inf_hs_14a)
+#   4. Override any catalog default per channel as needed
+#
+# Run `efuse-gen --list-configs` or see docs/configuration.md for the
+# full list of supported IC families and their parameters.
+
+simulation:
+  scenario_id: custom_topology_with_catalog
+  name: "Custom ZC with Catalog Presets"
+  description: >
+    OEM-defined zone controller layout using IC catalog presets.
+    3 zones, 8 channels. Zones and load mapping are user-defined;
+    electrical parameters come from the eFuse IC catalog with
+    per-channel overrides where needed.
+  duration_s: 180.0
+  sample_interval_ms: 100.0
+  seed: 42
+
+  # Zone Controllers
+  zones:
+    - zone_id: zc_cockpit
+      name: "Cockpit Zone Controller"
+      location: body
+      bus_interface: can
+    - zone_id: zc_front
+      name: "Front Zone Controller"
+      location: front
+      bus_interface: can
+    - zone_id: zc_rear
+      name: "Rear Zone Controller"
+      location: rear
+      bus_interface: can
+
+  # Channel specs (use efuse_family for catalog defaults, override as needed)
+  channel_specs:
+    # Cockpit ZC
+    - channel_id: ch_01
+      zone_id: zc_cockpit
+      efuse_family: inf_hs_14a       # BTS7008 — 14A high-side
+      load_name: instrument_cluster
+      load_type: resistive
+      system_cluster: body
+      nominal_current_a: 5.0         # override catalog's 9A default
+
+    - channel_id: ch_02
+      zone_id: zc_cockpit
+      efuse_family: inf_hs_9a        # BTS7012 — 9A high-side
+      load_name: infotainment_head_unit
+      load_type: resistive
+      system_cluster: infotainment
+
+    - channel_id: ch_03
+      zone_id: zc_cockpit
+      efuse_family: st_hs_14a        # ST VN7140AS — 14A high-side
+      load_name: heated_steering_wheel
+      load_type: ptc
+      system_cluster: climate
+      t_ambient_c: 30.0              # warmer cabin environment
+
+    # Front ZC
+    - channel_id: ch_04
+      zone_id: zc_front
+      efuse_family: inf_hs_18a       # BTS7006 — 18A high-side
+      load_name: headlamp_led_left
+      load_type: led
+      system_cluster: lighting
+      nominal_current_a: 8.0
+
+    - channel_id: ch_05
+      zone_id: zc_front
+      efuse_family: inf_hs_14a       # BTS7008 — 14A high-side
+      load_name: wiper_motor
+      load_type: motor
+      system_cluster: chassis
+      inrush_factor: 4.0
+      inrush_duration_ms: 60.0
+      duty_cycle: 0.5
+      on_duration_s: 3.0
+      off_duration_s: 3.0
+
+    - channel_id: ch_06
+      zone_id: zc_front
+      efuse_family: inf_hs_100a      # BTS81000 — 100A high-current
+      load_name: hvac_compressor
+      load_type: motor
+      system_cluster: climate
+      t_ambient_c: 55.0              # hot under-hood
+
+    # Rear ZC
+    - channel_id: ch_07
+      zone_id: zc_rear
+      efuse_family: inf_hs_9a        # BTS7012 — 9A high-side
+      load_name: seat_heater_rear_left
+      load_type: ptc
+      system_cluster: climate
+
+    - channel_id: ch_08
+      zone_id: zc_rear
+      efuse_family: inf_hs_2a        # BTS7040 — 2.8A high-side
+      load_name: tail_lamp_right
+      load_type: led
+      system_cluster: lighting
+
+  # Fault injections
+  fault_injections:
+    - channel_id: ch_04
+      fault_type: overload_spike
+      start_s: 30.0
+      duration_s: 3.0
+      intensity: 0.85
+
+    - channel_id: ch_06
+      fault_type: thermal_drift
+      start_s: 50.0
+      duration_s: 40.0
+      intensity: 0.7
+
+    - channel_id: ch_05
+      fault_type: connector_aging
+      start_s: 80.0
+      duration_s: 60.0
+      intensity: 0.5
+
+    - channel_id: ch_07
+      fault_type: voltage_sag
+      start_s: 120.0
+      duration_s: 10.0
+      intensity: 0.6
+
+features:
+  window_duration_s: 5.0
+  min_duration_s: 1.0
+
+storage:
+  output_dir: output
+  format: parquet
