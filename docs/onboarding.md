@@ -90,7 +90,7 @@ This creates a standard run directory from your bench CSV. The dashboard shows i
 pytest -v
 ```
 
-158 tests covering generation, ADC quantization, protection logic, thermal model, CAN signal packing, current limiting, ground faults, topology import/export, and feature extraction.
+179 tests covering generation, the `generate()` convenience API, ADC quantization, protection logic, thermal model, CAN signal packing, current limiting, ground faults, topology import/export, measurement ingestion, and feature extraction.
 
 ---
 
@@ -159,12 +159,16 @@ See [drive-cycles.md](drive-cycles.md) for the full deep-dive.
 | [`efuse_datagen/simulation/drive_cycles.py`](../efuse_datagen/simulation/drive_cycles.py) | Multi-cycle planner. Read `generate_schedule()` and `distribute_faults()`. |
 | [`efuse_datagen/features/engine.py`](../efuse_datagen/features/engine.py) | Feature computation. Read `compute()` — one method, 20+ features. |
 | [`efuse_datagen/storage/writer.py`](../efuse_datagen/storage/writer.py) | Output layer. Straightforward Parquet/CSV writes. |
+| [`efuse_datagen/__init__.py`](../efuse_datagen/__init__.py) | Public API. `generate()` one-liner, convenience re-exports (`GeneratorConfig`, `load_bundled_config`, etc.). |
 | [`efuse_datagen/cli.py`](../efuse_datagen/cli.py) | CLI orchestration. Single-cycle vs multi-cycle branching logic. |
+| [`efuse_datagen/ingestion/measurement_adapter.py`](../efuse_datagen/ingestion/measurement_adapter.py) | `MeasurementAdapter`, `DataSource`, `save_as_run()` — ingest real recordings into run format. |
 | [`efuse_datagen/dashboard_app.py`](../efuse_datagen/dashboard_app.py) | Packaged Streamlit UI. Launch with `efuse-dashboard`. |
 | [`efuse_datagen/config/templates/multi_day.yaml`](../efuse_datagen/config/templates/multi_day.yaml) | Best example of full multi-cycle config. Read the comments. |
 | [`tests/test_simulation.py`](../tests/test_simulation.py) | Test patterns — good examples of how to call the generator programmatically. |
+| [`tests/test_generate_api.py`](../tests/test_generate_api.py) | Tests for the `generate()` convenience API — config name, Path, GeneratorConfig, CSV output, overrides. |
+| [`tests/test_measurement_adapter.py`](../tests/test_measurement_adapter.py) | Tests for `MeasurementAdapter`, `DataSource.detect()`, and `save_as_run()`. |
 
-**Suggested reading order:** `telemetry.py` → `catalog.py` → `models.py` → `generator.py` → `cli.py` → run the demo → read the dashboard code.
+**Suggested reading order:** `telemetry.py` → `catalog.py` → `models.py` → `__init__.py` (generate) → `generator.py` → `cli.py` → run the demo → read the dashboard code.
 
 ---
 

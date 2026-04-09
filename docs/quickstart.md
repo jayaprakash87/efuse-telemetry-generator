@@ -264,6 +264,34 @@ Supported formats: CSV/TSV, Parquet, MDF/MF4 (requires `asammdf`), BLF/ASC CAN l
 
 ## 9. Use as a Python Library
 
+### One-liner: `generate()`
+
+The top-level `generate()` function runs the full pipeline (config → simulation → features → storage) in a single call:
+
+```python
+from efuse_datagen import generate
+
+result = generate("quick_demo")                        # built-in config name
+result = generate("quick_demo", duration_s=10, seed=42) # with overrides
+result = generate("./my_scenario.yaml", format="csv")   # custom YAML
+
+# result is a dict of Path objects:
+# {"telemetry": Path, "features": Path, "labels": Path,
+#  "channel_manifest": Path, "config": Path}
+```
+
+You can also pass an already-loaded config object:
+
+```python
+from efuse_datagen import generate, load_bundled_config
+
+cfg = load_bundled_config("quick_demo")
+cfg.simulation.seed = 99
+result = generate(cfg, output_dir="/tmp/my_run")
+```
+
+### Full control: use the building blocks directly
+
 ```python
 from efuse_datagen.config.builtin import load_bundled_config
 from efuse_datagen.features.engine import FeatureEngine
