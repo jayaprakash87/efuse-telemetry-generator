@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 
 def test_generate_quick_demo(tmp_path):
     """generate() with the built-in 'quick_demo' config produces expected files."""
@@ -38,7 +36,7 @@ def test_generate_csv_format(tmp_path):
 
 def test_generate_with_config_object(tmp_path):
     """generate() accepts a GeneratorConfig object directly."""
-    from efuse_datagen import GeneratorConfig, generate, load_bundled_config
+    from efuse_datagen import generate, load_bundled_config
 
     cfg = load_bundled_config("quick_demo")
     cfg.simulation.seed = 10

@@ -1,7 +1,5 @@
 """Tests for MeasurementAdapter helpers, DataSource, and save_as_run."""
 
-from pathlib import Path
-
 import pandas as pd
 import pytest
 
