@@ -7,6 +7,7 @@ reproducible and parameters are never buried in code.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
@@ -44,6 +45,8 @@ class FaultRateConfig(BaseModel):
     When a Poisson draw fires, one random eligible channel is picked.
     """
 
+    model_config = {"extra": "forbid"}
+
     overload_spike: float = Field(default=0.05, ge=0)
     intermittent_overload: float = Field(default=0.03, ge=0)
     voltage_sag: float = Field(default=0.04, ge=0)
@@ -73,7 +76,7 @@ class DriveCycleConfig(BaseModel):
 
     enabled: bool = Field(default=False, description="Enable multi-cycle mode")
     total_days: int = Field(default=30, ge=1, description="Simulation span in calendar days")
-    profile: str = Field(
+    profile: Literal["commuter", "mixed", "heavy"] = Field(
         default="mixed",
         description="Driving profile: commuter | mixed | heavy",
     )
@@ -131,6 +134,14 @@ class SimulationConfig(BaseModel):
         default_factory=list,
         description="Compact channel specs referencing eFuse catalog. Expanded to channels by build_channels().",
     )
+    topology_file: str = Field(
+        default="",
+        description=(
+            "Path to a reusable topology YAML file containing zones and channel_specs. "
+            "Can be a bundled name (e.g. 'bev_4zone_65ch') or a file path. "
+            "When set, zones and channel_specs are loaded from this file."
+        ),
+    )
     fault_injections: list[FaultInjection] = Field(default_factory=list)
     power_state_events: list["PowerStateEvent"] = Field(
         default_factory=list,
@@ -138,10 +149,6 @@ class SimulationConfig(BaseModel):
             "Ordered list of power-state transitions. Empty = always ACTIVE. "
             "First entry need not start at t=0 — state before first event is ACTIVE."
         ),
-    )
-    use_example_topology: bool = Field(
-        default=False,
-        description="When True, populate channels from the built-in 65-channel example topology.",
     )
     drive_cycle: DriveCycleConfig = Field(
         default_factory=DriveCycleConfig,
@@ -156,6 +163,9 @@ class SimulationConfig(BaseModel):
 
 class FeatureConfig(BaseModel):
     """Rolling-window parameters for the feature extraction engine."""
+
+    model_config = {"extra": "forbid"}
+
     window_duration_s: float = Field(default=5.0, description="Rolling window duration in seconds")
     min_duration_s: float = Field(
         default=1.0, description="Minimum data duration before features are valid"
@@ -204,7 +214,7 @@ class StorageConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
     output_dir: str = "output"
-    format: str = "parquet"  # "parquet" | "csv" | "json"
+    format: Literal["parquet", "csv", "json"] = "parquet"
 
 
 # ---------------------------------------------------------------------------
@@ -214,6 +224,8 @@ class StorageConfig(BaseModel):
 
 class RegionalWeatherConfig(BaseModel):
     """Climate profile for a geographic region."""
+
+    model_config = {"extra": "forbid"}
 
     ambient_temp_mean_c: float = Field(default=15.0, description="Annual mean ambient temperature °C")
     ambient_temp_std_c: float = Field(default=8.0, ge=0, description="Day-to-day σ °C")
@@ -237,7 +249,7 @@ class VehicleArchetypeConfig(BaseModel):
 
     id: str = Field(description="Unique archetype identifier used in manifest and tags")
     weight: float = Field(default=1.0, gt=0, description="Relative weight in fleet sampling")
-    profile: str = Field(
+    profile: Literal["commuter", "mixed", "heavy"] = Field(
         default="mixed",
         description="Driving profile: commuter | mixed | heavy",
     )
@@ -401,7 +413,7 @@ def load_config(path: str | Path) -> GeneratorConfig:
     """Load a GeneratorConfig from a YAML or JSON file.
 
     After parsing, resolves the topology:
-      - If use_example_topology is True, populates channels from example_topology()
+      - If topology_file is set, loads zones and channel_specs from that file
       - If channel_specs are present, expands them via the eFuse catalog
       - Otherwise uses the explicit channels list as-is
     """
@@ -414,7 +426,8 @@ def load_config(path: str | Path) -> GeneratorConfig:
 def load_config_data(raw: dict) -> GeneratorConfig:
     """Validate config data from an in-memory mapping and resolve topology."""
     cfg = GeneratorConfig.model_validate(raw)
-    _resolve_topology(cfg)
+    sim_raw = raw.get("simulation", {})
+    _resolve_topology(cfg, channels_explicit="channels" in sim_raw)
     return cfg
 
 
@@ -423,23 +436,97 @@ def default_config() -> GeneratorConfig:
     return GeneratorConfig()
 
 
-def _resolve_topology(cfg: GeneratorConfig) -> None:
-    """Populate simulation channels from topology or channel_specs."""
-    from efuse_datagen.config.catalog import build_channels, example_topology
+def _resolve_topology(cfg: GeneratorConfig, *, channels_explicit: bool = False) -> None:
+    """Populate simulation channels from topology file, channel_specs, or explicit channels."""
+    from efuse_datagen.config.catalog import build_channels
 
     sim = cfg.simulation
 
-    if sim.use_example_topology:
-        zones, specs = example_topology()
-        sim.zones = zones
-        sim.channels = build_channels(zones, specs)
-        return
+    # Guard: reject ambiguous topology sources
+    has_topology_file = bool(sim.topology_file)
+    has_channel_specs = bool(sim.channel_specs)
+    has_explicit_channels = channels_explicit and bool(sim.channels)
 
+    sources = [
+        name
+        for name, active in [
+            ("topology_file", has_topology_file),
+            ("channel_specs", has_channel_specs),
+            ("channels", has_explicit_channels),
+        ]
+        if active
+    ]
+    if len(sources) > 1:
+        raise ValueError(
+            f"Multiple topology sources specified: {', '.join(sources)}. "
+            "Use exactly one of: topology_file (for reusable architectures), "
+            "channel_specs (for catalog-based setup), or channels (for explicit definitions)."
+        )
+
+    # 1. Load from a topology file (bundled name or file path)
+    if has_topology_file:
+        _load_topology_file(sim)
+
+    # 2. Expand channel_specs via catalog
     if sim.channel_specs:
         sim.channels = build_channels(sim.zones, sim.channel_specs)
         return
 
-    # Otherwise: use explicit channels list as-is
+    # 3. Otherwise: use explicit channels list as-is
+
+
+_topology_cache: dict[str, dict] = {}
+
+
+def _load_topology_file(sim: SimulationConfig) -> None:
+    """Load zones and channel_specs from a topology YAML file.
+
+    Resolution order:
+      1. Bundled topology (e.g. 'bev_4zone_65ch') in the topologies/ package directory
+      2. Absolute or relative file path
+
+    Parsed YAML is cached so fleet-mode (N vehicles sharing one topology)
+    doesn't re-parse the same file on every vehicle.
+    """
+    from importlib.resources import files as pkg_files
+
+    name = sim.topology_file
+
+    # Return cached copy if already parsed
+    if name in _topology_cache:
+        topo = _topology_cache[name]
+    else:
+        # Try bundled topology first
+        bundled = pkg_files("efuse_datagen").joinpath(f"config/topologies/{name}.yaml")
+        if bundled.is_file():  # type: ignore[union-attr]
+            topo = yaml.safe_load(bundled.read_text(encoding="utf-8"))  # type: ignore[union-attr]
+        else:
+            # Treat as a file path — guard against path traversal
+            path = Path(name).resolve()
+            if ".." in Path(name).parts:
+                raise ValueError(
+                    f"Topology file path must not contain '..': '{name}'. "
+                    f"Use an absolute path or a path relative to the working directory."
+                )
+            if not path.exists():
+                raise FileNotFoundError(
+                    f"Topology file not found: '{name}'. "
+                    f"Provide an existing file path or a bundled topology name."
+                )
+            with open(path) as f:
+                topo = yaml.safe_load(f)
+
+        if not isinstance(topo, dict):
+            raise ValueError(f"Topology file '{name}' must be a YAML mapping with 'zones' and 'channel_specs'.")
+
+        _topology_cache[name] = topo
+
+    # Merge — topology file provides zones and channel_specs;
+    # the scenario config can still override or extend.
+    if "zones" in topo and not sim.zones:
+        sim.zones = [ZoneController(**z) for z in topo["zones"]]
+    if "channel_specs" in topo and not sim.channel_specs:
+        sim.channel_specs = list(topo["channel_specs"])
 
 
 
