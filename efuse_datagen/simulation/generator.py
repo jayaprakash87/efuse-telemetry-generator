@@ -23,6 +23,7 @@ from efuse_datagen.schemas.telemetry import (
     DeviceStatus,
     FaultInjection,
     FaultType,
+    LoadType,
     PowerClass,
     PowerState,
     ProtectionEvent,
@@ -371,18 +372,18 @@ class TelemetryGenerator:
         """Apply load-type-specific turn-on transient to the first N samples."""
         if ch.inrush_factor <= 1.0 or ch.inrush_duration_ms <= 0:
             # Default resistive load types or no inrush configured
-            if ch.load_type == "motor":
+            if ch.load_type == LoadType.MOTOR:
                 # Motor: 5x inrush for 50ms if not explicitly configured
                 n_inrush = max(int(0.050 / interval_s), 1)
                 factor = 5.0
-            elif ch.load_type == "inductive":
+            elif ch.load_type == LoadType.INDUCTIVE:
                 n_inrush = max(int(0.020 / interval_s), 1)
                 factor = 3.0
-            elif ch.load_type == "ptc":
+            elif ch.load_type == LoadType.PTC:
                 # PTC thermistor: 2x cold-start for 500ms, decaying
                 n_inrush = max(int(0.500 / interval_s), 1)
                 factor = 2.0
-            elif ch.load_type == "capacitive":
+            elif ch.load_type == LoadType.CAPACITIVE:
                 # Capacitive: sharp spike (input caps charging), very fast decay
                 # Typical: 8-10x for <10ms, RC-shaped
                 n_inrush = max(int(0.010 / interval_s), 1)
@@ -395,7 +396,7 @@ class TelemetryGenerator:
 
         n_inrush = min(n_inrush, len(current))
 
-        if ch.load_type == "capacitive" and ch.inrush_factor <= 1.0:
+        if ch.load_type == LoadType.CAPACITIVE and ch.inrush_factor <= 1.0:
             # Capacitive loads: fast RC discharge shape (steeper than exponential)
             decay = np.exp(-5 * np.arange(n_inrush) / max(n_inrush, 1))
         else:
@@ -674,7 +675,7 @@ class TelemetryGenerator:
                 inrush_samp = max(int(ch.inrush_duration_ms / 1000 / interval_s), 1) if ch.inrush_duration_ms > 0 else max(int(0.050 / interval_s), 1)
                 end_ir = min(edge_i + inrush_samp, n)
                 decay = np.exp(-3 * np.arange(end_ir - edge_i) / max(end_ir - edge_i, 1))
-                inrush_factor = ch.inrush_factor if ch.inrush_factor > 1.0 else (5.0 if ch.load_type == "motor" else 2.0)
+                inrush_factor = ch.inrush_factor if ch.inrush_factor > 1.0 else (5.0 if ch.load_type == LoadType.MOTOR else 2.0)
                 current[edge_i:end_ir] = ch.nominal_current_a * (1.0 + (inrush_factor - 1.0) * decay) + self._composite_noise(end_ir - edge_i, ch)
             # Zero out off periods
             off_mask = ~activity_mask

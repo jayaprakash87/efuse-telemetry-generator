@@ -83,6 +83,18 @@ class SourceProtocol(str, Enum):
     REPLAY = "replay"  # Offline replay from recorded files
 
 
+class LoadType(str, Enum):
+    """Load model — controls inrush transient and noise characteristics."""
+
+    RESISTIVE = "resistive"  # Heaters, lamps (incandescent), resistor loads
+    INDUCTIVE = "inductive"  # Relays, solenoid valves
+    MOTOR = "motor"  # DC motors (wipers, window lifts, fans)
+    PTC = "ptc"  # PTC heaters — cold resistance < hot resistance
+    CAPACITIVE = "capacitive"  # Capacitive loads — high inrush, low steady-state
+    LED = "led"  # LED lighting — low current, constant-current driver
+    SOLENOID = "solenoid"  # Direct solenoid drive (injectors, lock actuators)
+
+
 class EFuseFamily(str, Enum):
     """eFuse IC families aligned to production vehicle programs.
 
@@ -203,7 +215,7 @@ class EFuseProfile(BaseModel):
     tau_thermal_s: float = Field(description="Thermal time constant s")
     cooldown_s: float = 1.0
     max_retries: int = 3
-    load_type: str = "resistive"
+    load_type: LoadType = LoadType.RESISTIVE
 
     # --- IC identification (optional — for traceability to real datasheets) ---
     ic_part_number: str = Field(default="", description="IC part number, e.g. 'BTS7006-1EPP'")
@@ -471,9 +483,9 @@ class ChannelMeta(BaseModel):
     )
 
     # Load transient profile
-    load_type: str = Field(
-        default="resistive",
-        description="Load model: resistive | inductive | motor | ptc | capacitive",
+    load_type: LoadType = Field(
+        default=LoadType.RESISTIVE,
+        description="Load model — controls inrush transient and noise profile",
     )
     inrush_factor: float = Field(
         default=1.0, ge=1.0, description="Turn-on current multiplier vs nominal"
@@ -699,6 +711,50 @@ class ChannelMeta(BaseModel):
                 f"max_current_a ({self.max_current_a})"
             )
         return self
+
+    @classmethod
+    def explain(cls, field_name: str | None = None) -> str:
+        """Return human-readable documentation for ChannelMeta fields.
+
+        Parameters
+        ----------
+        field_name : str, optional
+            A specific field to describe. If *None*, returns a summary of
+            every field with its type, default, and description.
+
+        Returns
+        -------
+        str
+            Formatted documentation string (suitable for ``print()``).
+
+        Raises
+        ------
+        KeyError
+            If *field_name* does not exist on ``ChannelMeta``.
+        """
+        fields = cls.model_fields
+        if field_name is not None:
+            if field_name not in fields:
+                raise KeyError(
+                    f"Unknown field '{field_name}'. "
+                    f"Available: {', '.join(sorted(fields))}"
+                )
+            fi = fields[field_name]
+            parts = [f"{field_name}"]
+            parts.append(f"  Type:    {fi.annotation.__name__ if hasattr(fi.annotation, '__name__') else str(fi.annotation)}")
+            parts.append(f"  Default: {fi.default!r}")
+            if fi.description:
+                parts.append(f"  {fi.description}")
+            return "\n".join(parts)
+
+        lines: list[str] = ["ChannelMeta fields", "=" * 40]
+        for name, fi in fields.items():
+            ann = fi.annotation.__name__ if hasattr(fi.annotation, "__name__") else str(fi.annotation)
+            desc = fi.description or ""
+            lines.append(f"  {name:.<36s} {ann}  (default={fi.default!r})")
+            if desc:
+                lines.append(f"    {desc}")
+        return "\n".join(lines)
 
 
 class FaultInjection(BaseModel):
