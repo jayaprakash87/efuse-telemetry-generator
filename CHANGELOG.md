@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] — 2026-04-09
+## [1.0.1] — 2026-04-09
 
 ### Added
 - **Topology CLI** (`efuse-gen topology`) — new subcommand group with `import`, `export`, `template`, and `new` commands for managing vehicle topology YAML files from CSV/Excel/Parquet spreadsheets.
@@ -40,10 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Catalog module docstring and example topology factory moved to `topology_io` / bundled YAML files.
 - README updated with PyPI install instructions, developer-setup section, and quickstart link.
 - Docs (`architecture.md`, `configuration.md`, `dashboard.md`, `data-model.md`, `drive-cycles.md`, `onboarding.md`) refreshed.
-
-## [1.0.0] — 2026-04-09
-
-### Changed
 - Promoted to first stable release on PyPI.
 - Development status upgraded to Production/Stable.
 - Added `MANIFEST.in` for reliable sdist packaging.
