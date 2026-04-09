@@ -48,6 +48,271 @@ app = typer.Typer(
 )
 console = Console()
 
+# ---------------------------------------------------------------------------
+# topology subcommand group
+# ---------------------------------------------------------------------------
+
+topology_app = typer.Typer(
+    name="topology",
+    help="Import, export, and manage vehicle topology files.",
+)
+app.add_typer(topology_app, name="topology")
+
+
+@topology_app.command("import")
+def topology_import(
+    source: Path = typer.Argument(
+        ...,
+        help="Path to CSV, Excel (.xlsx), or Parquet file with channel definitions.",
+    ),
+    output: Path = typer.Option(
+        Path("topology.yaml"),
+        "--output",
+        "-o",
+        help="Output YAML topology file.",
+    ),
+) -> None:
+    """Import a vehicle topology from a spreadsheet into YAML.
+
+    The spreadsheet should have one row per eFuse channel. Required columns:
+    channel_id, zone_id. Recommended: efuse_family, load_name.
+
+    Zone definitions are auto-generated from the zone_id column. Add optional
+    zone_name, zone_location, zone_bus columns for richer zone metadata.
+
+    Use 'efuse-gen topology template' to generate a CSV template with example rows.
+    """
+    from efuse_datagen.config.topology_io import import_topology
+
+    topo = import_topology(source, output)
+    n_z = len(topo["zones"])
+    n_ch = len(topo["channel_specs"])
+    console.print(f"[green]✓[/green] Imported {n_ch} channels across {n_z} zones from [bold]{source}[/bold]")
+    console.print(f"  Output: [cyan]{output}[/cyan]")
+    console.print()
+    console.print("Use it in a scenario config:")
+    console.print(f"  simulation:")
+    console.print(f"    topology_file: ./{output.name}")
+
+
+@topology_app.command("template")
+def topology_template(
+    output: Path = typer.Option(
+        Path("channels_template.csv"),
+        "--output",
+        "-o",
+        help="Output CSV template file.",
+    ),
+    minimal: bool = typer.Option(
+        False,
+        "--minimal",
+        "-m",
+        help="Emit only essential columns (channel_id, zone_id, efuse_family, load_name, load_type, zone_name).",
+    ),
+) -> None:
+    """Generate a CSV template with example rows for filling in your vehicle topology.
+
+    Open the CSV in Excel or Google Sheets, fill in your channels, then import:
+
+        efuse-gen topology template -o my_channels.csv
+        # ... fill in your data ...
+        efuse-gen topology import my_channels.csv -o my_vehicle.yaml
+
+    Use --minimal for a simpler template with only the essential columns.
+    """
+    from efuse_datagen.config.topology_io import export_template_csv
+
+    export_template_csv(output, minimal=minimal)
+    label = "minimal " if minimal else ""
+    console.print(f"[green]✓[/green] {label.capitalize()}template written to [cyan]{output}[/cyan]")
+    console.print()
+    console.print("Fill in your channel data, then import:")
+    console.print(f"  efuse-gen topology import {output} -o my_vehicle.yaml")
+
+
+@topology_app.command("export")
+def topology_export(
+    source: Path = typer.Argument(
+        ...,
+        help="Path to the topology YAML file to export.",
+    ),
+    output: Path = typer.Option(
+        Path("topology_export.csv"),
+        "--output",
+        "-o",
+        help="Output CSV file.",
+    ),
+) -> None:
+    """Export a topology YAML back to CSV for editing in a spreadsheet.
+
+    Useful for modifying a bundled or imported topology in Excel / Sheets:
+
+        efuse-gen topology export my_vehicle.yaml -o channels.csv
+        # ... edit in Excel ...
+        efuse-gen topology import channels.csv -o my_vehicle.yaml
+    """
+    from efuse_datagen.config.topology_io import export_topology_csv
+
+    export_topology_csv(source, output)
+    with open(source) as f:
+        import yaml as _yaml
+        topo = _yaml.safe_load(f)
+    n_ch = len(topo.get("channel_specs", []))
+    console.print(f"[green]✓[/green] Exported {n_ch} channels to [cyan]{output}[/cyan]")
+    console.print()
+    console.print("Edit in your spreadsheet, then re-import:")
+    console.print(f"  efuse-gen topology import {output} -o {source.name}")
+
+
+@topology_app.command("new")
+def topology_new(
+    output: Path = typer.Option(
+        Path("my_vehicle.yaml"),
+        "--output",
+        "-o",
+        help="Output YAML topology file.",
+    ),
+    template: str = typer.Option(
+        "compact",
+        "--template",
+        "-t",
+        help="Preset size: compact (2 zones / 12 ch), full (4 zones / 65 ch).",
+    ),
+) -> None:
+    """Scaffold a new topology YAML from a bundled preset.
+
+    Creates a copy of a bundled topology that you can edit directly:
+
+        efuse-gen topology new -t compact -o my_prototype.yaml
+        efuse-gen topology new -t full -o my_production.yaml
+
+    Available presets: compact (bev_2zone_12ch), full (bev_4zone_65ch).
+    """
+    from importlib.resources import files as pkg_files
+
+    presets = {
+        "compact": "bev_2zone_12ch",
+        "full": "bev_4zone_65ch",
+    }
+    key = template.lower()
+    if key not in presets:
+        raise typer.BadParameter(
+            f"Unknown preset '{template}'. Available: {', '.join(sorted(presets))}"
+        )
+
+    bundled_name = presets[key]
+    bundled = pkg_files("efuse_datagen").joinpath(f"config/topologies/{bundled_name}.yaml")
+    content = bundled.read_text(encoding="utf-8")  # type: ignore[union-attr]
+
+    output.write_text(content, encoding="utf-8")
+    import yaml as _yaml
+    topo = _yaml.safe_load(content)
+    n_z = len(topo.get("zones", []))
+    n_ch = len(topo.get("channel_specs", []))
+    console.print(
+        f"[green]✓[/green] Scaffolded [bold]{key}[/bold] topology "
+        f"({n_z} zones, {n_ch} channels) → [cyan]{output}[/cyan]"
+    )
+    console.print()
+    console.print("Reference it in your scenario config:")
+    console.print(f"  simulation:")
+    console.print(f"    topology_file: ./{output.name}")
+
+
+@app.command("info")
+def info(
+    config: str = typer.Argument(
+        ...,
+        help="Path to YAML config or built-in name (quick_demo, single_drive, fleet, etc.).",
+    ),
+) -> None:
+    """Display a summary of what a config contains without generating data.
+
+    Shows scenario details, channel breakdown by zone and load type,
+    fault injections, drive-cycle settings, and fleet configuration.
+
+    Examples:
+
+        efuse-gen info quick_demo
+        efuse-gen info ./my_scenario.yaml
+    """
+    cfg, config_name = _load_requested_config(config)
+    sim = cfg.simulation
+
+    console.rule(f"[bold cyan]{sim.name}[/bold cyan]  ({config_name})")
+    if sim.description:
+        console.print(f"  {sim.description}")
+    console.print()
+
+    # Mode
+    is_fleet = cfg.fleet is not None
+    if is_fleet:
+        mode = "Fleet"
+    elif sim.drive_cycle.enabled:
+        mode = "Multi-cycle"
+    else:
+        mode = "Single-cycle"
+    console.print(f"  Mode        : [bold]{mode}[/bold]")
+    console.print(f"  Channels    : {len(sim.channels)}")
+    console.print(f"  Seed        : {sim.seed}")
+    console.print(f"  Interval    : {sim.sample_interval_ms} ms")
+
+    if not is_fleet and not sim.drive_cycle.enabled:
+        console.print(f"  Duration    : {sim.duration_s} s")
+
+    # Zone breakdown
+    zones: dict[str, int] = {}
+    load_types: dict[str, int] = {}
+    for ch in sim.channels:
+        z = ch.zone_id or "(unassigned)"
+        zones[z] = zones.get(z, 0) + 1
+        lt = ch.load_type.value if hasattr(ch.load_type, "value") else str(ch.load_type)
+        load_types[lt] = load_types.get(lt, 0) + 1
+
+    if zones:
+        console.print()
+        console.print("  [bold]Zones:[/bold]")
+        for z, n in sorted(zones.items()):
+            console.print(f"    {z}: {n} channels")
+
+    if load_types:
+        console.print()
+        console.print("  [bold]Load types:[/bold]")
+        for lt, n in sorted(load_types.items()):
+            console.print(f"    {lt}: {n}")
+
+    # Fault injections
+    if sim.fault_injections:
+        console.print()
+        console.print(f"  [bold]Fault injections:[/bold] {len(sim.fault_injections)}")
+        for fi in sim.fault_injections:
+            console.print(f"    {fi.channel_id} → {fi.fault_type.value} at {fi.start_s}s ({fi.duration_s}s, intensity={fi.intensity})")
+
+    # Drive cycle
+    if sim.drive_cycle.enabled:
+        dc = sim.drive_cycle
+        console.print()
+        console.print(f"  [bold]Drive cycle:[/bold]")
+        console.print(f"    Days      : {dc.total_days}")
+        console.print(f"    Profile   : {dc.profile}")
+
+    # Fleet
+    if is_fleet:
+        fleet = cfg.fleet
+        console.print()
+        console.print(f"  [bold]Fleet:[/bold]")
+        console.print(f"    Vehicles  : {fleet.n_vehicles}")
+        console.print(f"    Days      : {fleet.duration_days}")
+        console.print(f"    Archetypes: {len(fleet.archetypes)}")
+        for a in fleet.archetypes:
+            console.print(f"      {a.id} (weight={a.weight})")
+
+    # Storage
+    console.print()
+    console.print(f"  [bold]Output:[/bold]")
+    console.print(f"    Format    : {cfg.storage.format}")
+    console.print(f"    Directory : {cfg.storage.output_dir}")
+
 
 @app.callback(invoke_without_command=True)
 def generate(
@@ -115,6 +380,11 @@ def generate(
         "--json-log",
         help="Emit structured JSON log lines instead of pretty output.",
     ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview what the config would generate without writing any files.",
+    ),
 ) -> None:
     """Generate synthetic eFuse telemetry, features, and fault labels."""
     if ctx.invoked_subcommand is not None:
@@ -149,12 +419,11 @@ def generate(
     # Load config
     cfg, config_name = _load_requested_config(config)
 
-    # Warn about mode-mismatched flags
+    # Reject mode-mismatched flags
     is_fleet = cfg.fleet is not None
     if is_fleet and duration is not None:
-        console.print(
-            "[yellow]⚠ --duration is ignored in fleet mode "
-            "(use --days for fleet duration).[/yellow]"
+        raise typer.BadParameter(
+            "--duration is not supported in fleet mode. Use --days for fleet duration."
         )
     if not is_fleet:
         fleet_flags = []
@@ -167,10 +436,45 @@ def generate(
         if write_combined:
             fleet_flags.append("--combined")
         if fleet_flags:
-            console.print(
-                f"[yellow]⚠ {', '.join(fleet_flags)} ignored in single-vehicle mode "
-                f"(requires a fleet config).[/yellow]"
+            raise typer.BadParameter(
+                f"{', '.join(fleet_flags)} only work with fleet configs "
+                f"(configs that have a fleet: section). "
+                f"Try: efuse-gen --config fleet {' '.join(fleet_flags)}"
             )
+
+    # ── Dry-run preview ────────────────────────────────────────
+    if dry_run:
+        sim_cfg = cfg.simulation
+        if duration is not None:
+            sim_cfg = sim_cfg.model_copy(update={"duration_s": duration})
+        console.rule("[bold cyan]Dry Run — Preview")
+        console.print(f"  Scenario  : [bold]{sim_cfg.name}[/bold]")
+        console.print(f"  Mode      : {'Fleet' if is_fleet else 'Multi-cycle' if sim_cfg.drive_cycle.enabled else 'Single-cycle'}")
+        console.print(f"  Channels  : {len(sim_cfg.channels)}")
+        console.print(f"  Seed      : {seed or sim_cfg.seed}")
+        if is_fleet:
+            fleet = cfg.fleet
+            nv = n_vehicles or fleet.n_vehicles
+            dd = duration_days or fleet.duration_days
+            console.print(f"  Vehicles  : {nv}")
+            console.print(f"  Days      : {dd}")
+            console.print(f"  Archetypes: {', '.join(a.id for a in fleet.archetypes)}")
+        elif sim_cfg.drive_cycle.enabled:
+            dc = sim_cfg.drive_cycle
+            console.print(f"  Days      : {dc.total_days}")
+            console.print(f"  Profile   : {dc.profile}")
+            est_rows = int(sim_cfg.duration_s / (sim_cfg.sample_interval_ms / 1000) * len(sim_cfg.channels))
+            console.print(f"  Est. rows : ~{est_rows:,} per cycle")
+        else:
+            n_samples = int(sim_cfg.duration_s / (sim_cfg.sample_interval_ms / 1000))
+            est_rows = n_samples * len(sim_cfg.channels)
+            console.print(f"  Duration  : {sim_cfg.duration_s}s  |  Interval: {sim_cfg.sample_interval_ms}ms")
+            console.print(f"  Est. rows : {est_rows:,}")
+        console.print(f"  Format    : {fmt}")
+        console.print(f"  Output    : {output}/")
+        console.print()
+        console.print("[dim]No files written. Remove --dry-run to generate.[/dim]")
+        return
 
     # Route to fleet mode if config has fleet section
     if cfg.fleet is not None:
@@ -302,10 +606,21 @@ def generate(
     if cycles:
         writer.write_drive_cycles(cycles)
 
-    # 4. Save config snapshot
+    # 4. Save config snapshot (full GeneratorConfig for reproducibility)
     config_snapshot = out_dir / "config.yaml"
     with open(config_snapshot, "w") as f:
-        yaml.safe_dump(sim_cfg.model_dump(mode="json"), f, sort_keys=False)
+        yaml.safe_dump(cfg.model_dump(mode="json"), f, sort_keys=False)
+
+    # 5. Run README
+    writer.write_run_readme(
+        scenario_name=sim_cfg.name,
+        n_channels=len(sim_cfg.channels),
+        n_rows=len(telem_df),
+        n_features=len(features_df),
+        n_labels=len(labels_df),
+        duration_s=sim_cfg.duration_s,
+        fmt=fmt,
+    )
 
     # Summary
     console.print()
@@ -316,7 +631,9 @@ def generate(
     if cycles:
         console.print(f"  Cycles     : {len(cycles)}")
         console.print(f"  Driving    : {sum(c.duration_s for c in cycles)/3600:.1f} hours")
-    console.print(f"  Files      : {out_dir}/")
+    console.print(f"  Files      : {out_dir.resolve()}/")
+    console.print()
+    console.print("[dim]Tip: run [bold]efuse-dashboard[/bold] to visualize results interactively (needs [dashboard] extra)[/dim]")
     console.print()
 
 
@@ -419,14 +736,15 @@ def _run_fleet(
 
 
 # ---------------------------------------------------------------------------
-# efuse-ingest sub-command
+# ingest subcommand
 # ---------------------------------------------------------------------------
 
 ingest_app = typer.Typer(
-    name="efuse-ingest",
+    name="ingest",
     help="Ingest real measurement data (CSV / Parquet / MDF / BLF) into the standard eFuse run format.",
     add_completion=False,
 )
+app.add_typer(ingest_app, name="ingest")
 
 
 @ingest_app.command()
@@ -511,10 +829,6 @@ def ingest(
 def main() -> None:
     multiprocessing.freeze_support()
     app()
-
-
-def ingest_main() -> None:
-    ingest_app()
 
 
 if __name__ == "__main__":
