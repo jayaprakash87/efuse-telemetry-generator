@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "efuse-telemetry-generator"
-version = "0.2.0"
+version = "1.0.0"
 description = "Standalone synthetic eFuse telemetry generator — physics-based signal synthesis, feature extraction, and fault labelling for ZC architecture validation"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,7 +24,7 @@ keywords = [
     "simulation",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
@@ -51,6 +51,7 @@ Homepage = "https://github.com/jayaprakash87/efuse-telemetry-generator"
 Documentation = "https://github.com/jayaprakash87/efuse-telemetry-generator/tree/main/docs"
 Repository = "https://github.com/jayaprakash87/efuse-telemetry-generator"
 Issues = "https://github.com/jayaprakash87/efuse-telemetry-generator/issues"
+Changelog = "https://github.com/jayaprakash87/efuse-telemetry-generator/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [

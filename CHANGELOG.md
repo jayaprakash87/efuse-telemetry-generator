@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-04-09
+
+### Changed
+- Promoted to first stable release on PyPI.
+- Development status upgraded to Production/Stable.
+- Added `MANIFEST.in` for reliable sdist packaging.
+- Added Changelog URL to project metadata.
+
 ## [0.2.0] — 2026-04-08
 
 ### Added
