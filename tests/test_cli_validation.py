@@ -63,15 +63,15 @@ class TestNumericRangeValidation:
 
 
 class TestModeMismatchWarnings:
-    def test_fleet_flags_warn_in_single_mode(self):
+    def test_fleet_flags_rejected_in_single_mode(self):
         result = runner.invoke(app, ["--config", "quick_demo", "--vehicles", "5"])
-        # Should run but emit a warning
-        assert "--vehicles ignored in single-vehicle mode" in _plain(result.output)
+        assert result.exit_code != 0
+        assert "only work with fleet configs" in _plain(result.output)
 
-    def test_duration_flag_warns_in_fleet_mode(self):
-        with patch("efuse_datagen.cli._run_fleet"):
-            result = runner.invoke(app, ["--config", "fleet", "--duration", "60", "--vehicles", "1", "--days", "1"])
-        assert "--duration is ignored in fleet mode" in _plain(result.output)
+    def test_duration_flag_rejected_in_fleet_mode(self):
+        result = runner.invoke(app, ["--config", "fleet", "--duration", "60"])
+        assert result.exit_code != 0
+        assert "not supported in fleet mode" in _plain(result.output)
 
 
 class TestConfigResolution:

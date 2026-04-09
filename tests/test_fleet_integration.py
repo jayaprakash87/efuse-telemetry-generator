@@ -15,20 +15,23 @@ from efuse_datagen.simulation.fleet import (
 
 @pytest.fixture()
 def fleet_cfg():
-    """Load the bundled fleet config with a small override for fast tests."""
+    """Load the bundled fleet config with small overrides for fast tests."""
     cfg = load_bundled_config("fleet")
     assert cfg.fleet is not None
-    # Shrink to 2 vehicles, 2 days, 1 worker for speed
+    # Shrink to 2 vehicles, 1 day, 1 worker; coarsen interval to 10 s for speed
     cfg = cfg.model_copy(
         update={
             "fleet": cfg.fleet.model_copy(
                 update={
                     "n_vehicles": 2,
-                    "duration_days": 2,
+                    "duration_days": 1,
                     "max_workers": 1,
                     "write_combined": True,
                 }
-            )
+            ),
+            "simulation": cfg.simulation.model_copy(
+                update={"sample_interval_ms": 10000.0}
+            ),
         }
     )
     return cfg
