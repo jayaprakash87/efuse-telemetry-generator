@@ -19,6 +19,8 @@ CLI flags override the corresponding YAML fields:
 - `--seed` → `simulation.seed`
 - `--format` → `storage.format`
 - `--output` → `storage.output_dir`
+- `--dry-run` — Preview generation (channel count, estimated rows, output path) without writing files
+- `--json-log` — Emit structured JSON log lines instead of Rich pretty-printed output
 
 ---
 
@@ -47,9 +49,9 @@ The core scenario definition.
 | `duration_s` | float | `60.0` | Simulation duration in seconds (single-cycle mode). Ignored when `drive_cycle.enabled` is true — total duration is determined by `drive_cycle.total_days`. |
 | `sample_interval_ms` | float | `100.0` | Sample period in milliseconds. Use 100 for short runs, 1000 for month-long. |
 | `seed` | int | `42` | Master random seed for reproducibility |
-| `use_example_topology` | bool | `false` | When true, loads the built-in 65-channel 4-zone BEV topology instead of inline channels |
-| `channels` | list | 3-ch demo | Inline channel definitions (see below) |
-| `channel_specs` | list | `[]` | Compact channel specs referencing eFuse catalog (advanced) |
+| `topology_file` | string | `""` | Path to a reusable topology YAML file (zones + channel_specs). Use a bundled name like `bev_4zone_65ch` or a file path like `./my_vehicle.yaml`. Parsed YAML is cached for fleet-mode performance. Paths with `..` are rejected to prevent directory traversal. |
+| `channels` | list | 3-ch demo | Inline channel definitions (see below). For small topologies or full-explicit control. |
+| `channel_specs` | list | `[]` | Compact channel specs referencing the bundled eFuse IC catalog. Used together with `zones`. Typically loaded via `topology_file`. |
 | `fault_injections` | list | `[]` | Manual fault placement (single-cycle mode) |
 | `power_state_events` | list | `[]` | Power-state timeline. Empty = always ACTIVE. |
 | `drive_cycle` | object | disabled | Multi-cycle configuration (see below) |
@@ -214,9 +216,31 @@ efuse-gen --config quick_demo
 
 Source YAML: [`efuse_datagen/config/templates/quick_demo.yaml`](../efuse_datagen/config/templates/quick_demo.yaml)
 
+### `custom_topology`
+
+User-defined 2-zone, 6-channel ZC architecture with fully explicit parameters. No catalog dependency. Start here when defining your own vehicle topology.
+
+```bash
+efuse-gen --config custom_topology
+# → ~7,200 rows, 3 fault labels
+```
+
+Source YAML: [`efuse_datagen/config/templates/custom_topology.yaml`](../efuse_datagen/config/templates/custom_topology.yaml)
+
+### `custom_topology_with_catalog`
+
+User-defined 3-zone, 8-channel ZC architecture using IC catalog presets for electrical defaults. Demonstrates the hybrid approach: your zones and load mapping, catalog-sourced IC parameters.
+
+```bash
+efuse-gen --config custom_topology_with_catalog
+# → ~14,400 rows, 4 fault labels
+```
+
+Source YAML: [`efuse_datagen/config/templates/custom_topology_with_catalog.yaml`](../efuse_datagen/config/templates/custom_topology_with_catalog.yaml)
+
 ### `single_drive`
 
-Full 65-channel 4-zone topology with 21 manual faults over 300 seconds. Uses `use_example_topology: true` to load the built-in BEV topology from the eFuse catalog.
+Full 65-channel 4-zone **reference** topology with 21 manual faults over 300 seconds. Loads the bundled `bev_4zone_65ch` topology file — you only see the scenario config + faults in the template.
 
 ```bash
 efuse-gen --config single_drive
@@ -257,6 +281,143 @@ efuse-gen --config stress_test
 ```
 
 Source YAML: [`efuse_datagen/config/templates/stress_test.yaml`](../efuse_datagen/config/templates/stress_test.yaml)
+
+---
+
+## Custom Topology — Bring Your Own Zone Controller
+
+The generator is **topology-agnostic**. You define your Zone Controller architecture — zones, channels, load mapping — and the generator produces the data. The bundled reference topology and IC catalog are optional convenience features, not requirements.
+
+### OEM Workflow
+
+If your organisation (e.g., BMW, Mercedes, VW) wants to generate data for **your specific zone controller**, the typical workflow is:
+
+1. **Export your channel list** — from your EE design tool, wire harness database, or DOORS export as CSV / Excel
+2. **Import it** — `efuse-gen topology import channels.xlsx -o my_vehicle.yaml`  *(Excel requires: `pip install "efuse-telemetry-generator[excel]"`)*
+3. **Write a scenario config** — reference the topology file, add faults, set duration
+4. **Run the generator** — `efuse-gen --config ./my-scenario.yaml`
+
+Don't have a spreadsheet yet? Generate a CSV template to fill in:
+
+```bash
+efuse-gen topology template -o my_channels.csv
+
+# Or a minimal template with just the essential columns
+efuse-gen topology template -o my_channels.csv --minimal
+
+# Open in Excel / Google Sheets, fill in your channels, then:
+efuse-gen topology import my_channels.csv -o my_vehicle.yaml
+```
+
+Need to edit an existing topology in a spreadsheet? Export it:
+
+```bash
+efuse-gen topology export my_vehicle.yaml -o channels.csv
+```
+
+### Ways to Define Your Topology
+
+| Approach | When to use | Catalog needed? |
+|----------|-------------|------------------|
+| **`efuse-gen topology import`** (recommended) | Import from CSV / Excel — the way engineers actually work. | Depends on efuse_family column |
+| **`topology_file`** | Reuse one topology YAML across many scenarios. | Depends on topology file |
+| **`zones` + `channel_specs` with `efuse_family`** | Inline topology with catalog defaults. Good for self-contained config files. | Yes (as preset source) |
+| **`zones` + inline `channels`** | Full explicit control from datasheets / SPICE. No catalog dependency. | No |
+
+### Template: Full Custom Topology (no catalog)
+
+```bash
+efuse-gen --config custom_topology
+```
+
+This template defines 2 zones and 6 channels with fully explicit parameters. Copy it as a starting point:
+
+```bash
+# Export the template
+efuse-gen --config custom_topology          # run it first to verify
+# Copy to your project (adjust path as needed)
+cp $(python -c "from importlib.resources import files; print(files('efuse_datagen').joinpath('config/templates/custom_topology.yaml'))") ./my-vehicle.yaml
+```
+
+Key structure:
+
+```yaml
+simulation:
+  zones:
+    - zone_id: zone_front
+      name: "Front Zone Controller"
+      location: front
+      bus_interface: can
+    - zone_id: zone_rear
+      name: "Rear Zone Controller"
+      location: rear
+      bus_interface: can
+
+  channels:
+    - channel_id: ch_01
+      zone_id: zone_front              # maps to your zone
+      load_name: headlamp_left
+      nominal_current_a: 6.0
+      r_ds_on_ohm: 0.008              # from YOUR IC datasheet
+      r_thermal_kw: 35.0
+      tau_thermal_s: 20.0
+      # ... all parameters explicit
+```
+
+### Template: Custom Zones + IC Catalog Presets
+
+```bash
+efuse-gen --config custom_topology_with_catalog
+```
+
+This template defines **your zones** but references IC families from the catalog for electrical defaults. Best when your vehicle uses standard production ICs (Infineon PROFET+2, ST VIPower, etc.):
+
+```yaml
+simulation:
+  zones:
+    - zone_id: zc_cockpit
+      name: "Cockpit Zone Controller"
+      location: body
+      bus_interface: can
+
+  channel_specs:
+    - channel_id: ch_01
+      zone_id: zc_cockpit
+      efuse_family: inf_hs_14a        # BTS7008 — catalog fills Rds,on, thermal params, etc.
+      load_name: instrument_cluster
+      nominal_current_a: 5.0          # override catalog default
+      t_ambient_c: 30.0               # override ambient for your environment
+```
+
+Any field you specify in the spec overrides the catalog default. Fields you omit are filled from the catalog entry.
+
+### Zone Definition Reference
+
+Each zone represents a physical Zone Controller ECU:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `zone_id` | string | **required** | Unique zone identifier (e.g., `zc_front`, `zone_body`) |
+| `name` | string | `""` | Human-readable name |
+| `location` | string | `"body"` | Physical placement: `body`, `front`, `rear`, `underhood` |
+| `bus_interface` | string | `"can"` | Communication bus: `can`, `xcp`, `replay` |
+| `cdd_read_cycle_ms` | float | `10.0` | CDD SPI poll frequency (ms) |
+
+Channels assigned to a zone inherit its `bus_interface` as their `source_protocol`.
+
+### The eFuse IC Catalog — a Preset Library
+
+The bundled catalog contains electrical parameters for 19 production IC families (Infineon PROFET+2, ST VIPower, etc.) sourced from public datasheets. It's a **convenience library of component presets**, not a required input. Think of it like a parts database.
+
+Use it when:
+- You're building a large topology and want to reference IC families by name
+- Your vehicle uses standard production ICs and you don't want to re-enter datasheet values
+- You want to compare behaviour across different IC families
+
+Skip it when:
+- You have your own IC parameters (custom ASIC, internal datasheet values)
+- You want full control over every electrical parameter
+- You're simulating a non-automotive eFuse topology
 
 ---
 
@@ -328,7 +489,7 @@ simulation:
   scenario_id: weekly_commuter
   sample_interval_ms: 1000.0
   seed: 77
-  use_example_topology: true
+  topology_file: bev_4zone_65ch  # or ./my_vehicle.yaml
   drive_cycle:
     enabled: true
     total_days: 7

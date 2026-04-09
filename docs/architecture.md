@@ -28,10 +28,10 @@ A typical BEV has 50–80 eFuse channels across 3–5 zones. This tool models th
 
 | Zone | Channels | Systems |
 |------|----------|---------|
-| `zone_front` | 18 | Headlamps, HVAC, wiper, washer, charger, horn, suspension, steering |
-| `zone_rear` | 17 | Tail lights, seat heaters, defroster, dampers, ventilation, charge port, radar |
-| `zone_body` | 15 | Door locks, windows, mirrors, sunroof, PDU, trunk, keyless entry, immobiliser |
-| `zone_central` | 15 | Main PDU, battery disconnect, DC/DC, inverter, ADAS PSU, reserve rails, HVAC compressor |
+| `zone_rear` | 25 | Seating, lighting, infotainment, ADAS, drivetrain |
+| `zone_body` | 15 | Doors, locks, cabin climate, body electronics |
+| `zone_front` | 15 | Power supply, HVAC, suspension, auxiliary loads |
+| `zone_central` | 10 | Power distribution, closures, reserves |
 
 ### Why Synthetic Data Matters
 
@@ -133,7 +133,11 @@ Key types:
 
 ### `efuse_datagen/config/catalog.py` — eFuse IC Library
 
-`EFUSE_CATALOG` is a dict of 19 `EFuseProfile` instances — the parametric database of real eFuse ICs. `example_topology()` returns the 65-channel 4-zone BEV specification. `build_channels()` expands compact topology specs into full `ChannelMeta` objects with catalog lookup and per-channel randomisation.
+`EFUSE_CATALOG` is a dict of 19 `EFuseProfile` instances — the parametric database of real eFuse ICs. `build_channels()` expands compact topology specs (from YAML `channel_specs`) into full `ChannelMeta` objects with catalog lookup and per-channel randomisation. Topologies are defined in YAML files (bundled or imported via CSV), not in Python code.
+
+### `efuse_datagen/config/topology_io.py` — Topology Import / Export
+
+Handles CSV / Excel / Parquet import of vehicle topologies from engineering spreadsheets into YAML, and export back to CSV for round-trip editing. Normalises column headers via case-insensitive aliases (e.g. "Ch" → `channel_id`), coerces types, auto-generates zone definitions from the `zone_id` column, and warns on unrecognised `efuse_family` values.
 
 ### `efuse_datagen/config/models.py` — Configuration Hierarchy
 
@@ -203,7 +207,9 @@ Writes Parquet (default), CSV, or JSON. Handles:
 
 Typer-based. Entry points:
 - **`efuse-gen`** — Synthetic data generation. Auto-detects single-cycle, multi-cycle, or fleet from config. Fleet mode generates multiple vehicles in parallel. Output directories are named `<config>_<YYYYMMDD-HHMMSS>`.
-- **`efuse-ingest`** — Measurement data ingestion. Accepts a file or directory with column mapping, writes standard run directory.
+- **`efuse-gen topology`** — Subcommand group for topology management: `import` (CSV/Excel → YAML), `export` (YAML → CSV), `template` (generate a starter CSV).
+- **`efuse-gen ingest`** — Measurement data ingestion subcommand. Accepts a file or directory with column mapping, writes standard run directory.
+- **`--dry-run`** — Preview what would be generated (channel count, row estimate, output path) without writing any files.
 
 ### `efuse_datagen/ingestion/` — Measurement Data Ingestion
 
@@ -242,7 +248,7 @@ Data-agnostic analysis functions that work on any telemetry (synthetic or real):
 
 - **Add an eFuse IC:** Add entry to `EFUSE_CATALOG` in `catalog.py`
 - **Add a fault type:** Add enum to `FaultType`, add waveform method to `TelemetryGenerator`, add to `FaultRateConfig`
-- **Add a vehicle topology:** Create new `*_topology()` function in `catalog.py`
+- **Add a vehicle topology:** Create a topology YAML in `config/topologies/`, or import from CSV via `efuse-gen topology import`
 - **Add a feature:** Add computation in `FeatureEngine.compute()`
 - **Add a dashboard tab:** Create a module in `efuse_datagen/dashboard/tabs/`, add a `render(**ctx)` function, register in `dashboard_app.py` tab list
 - **Add an output format:** Extend `StorageWriter` format dispatch

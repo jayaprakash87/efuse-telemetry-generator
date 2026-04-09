@@ -49,7 +49,7 @@ output/fleet_<YYYYMMDD-HHMMSS>/
 
 `<run_id>` format: `<config>_<YYYYMMDD-HHMMSS>`, e.g. `quick_demo_20260408-134505`, `fleet_20260408-134343`. Ingested runs use the format `ingest_<YYYYMMDD-HHMMSS>`.
 
-Runs from `efuse-gen` include `config.yaml` and `channel_manifest.parquet`. Runs from `efuse-ingest` include `data_source.txt` and always have `telemetry.parquet`, `features.parquet`, and `labels.parquet` (labels may be empty if no ground truth was provided).
+Runs from `efuse-gen` include `config.yaml`, `channel_manifest.parquet`, and a `README.md` describing the output files. Runs from `efuse-gen ingest` include `data_source.txt` and always have `telemetry.parquet`, `features.parquet`, and `labels.parquet` (labels may be empty if no ground truth was provided).
 
 ---
 

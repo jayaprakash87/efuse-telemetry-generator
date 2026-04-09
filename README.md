@@ -34,9 +34,11 @@ The package is distributed as a **full runtime package**: library, CLI, built-in
 - **Power-state gating** — SLEEP/CRANK/ACTIVE/ACCESSORY states with inrush and dark current
 - **Duty-cycle gating** — periodic on/off cycling for intermittent loads (wiper motors, PTC heaters, etc.)
 
-### eFuse IC Catalog (19 Families)
+### eFuse IC Catalog (19 Families) — Optional Preset Library
 
-Parametric models for Infineon PROFET+2 (BTS7002, BTS7004, BTS7006, BTS7008, BTS70041, BTS70061, BTS70081), Infineon TLE multi-channel (TLE9104SH), Infineon high-current BTS (BTS81000), ST VIPower (VN7140AJ, VND7020AJ, VNH7013AY, VNL5050, VND5025), and CUSTOM. Each entry defines: Rds,on, I_max, I_trip ranges, ISENSE ratio, ADC resolution, blanking time, retry count, F(i,t) threshold, and thermal parameters.
+The generator ships with a bundled catalog of 19 production eFuse IC families as **convenience presets**. You can use them to quickly set up realistic channels without looking up datasheets, or **define your own channels from scratch** with explicit electrical parameters — the catalog is entirely optional.
+
+Included families: Infineon PROFET+2 (BTS7002, BTS7004, BTS7006, BTS7008, BTS70041, BTS70061, BTS70081), Infineon TLE multi-channel (TLE9104SH), Infineon high-current BTS (BTS81000), ST VIPower (VN7140AJ, VND7020AJ, VNH7013AY, VNL5050, VND5025), and CUSTOM. Each entry defines: Rds,on, I_max, I_trip ranges, ISENSE ratio, ADC resolution, blanking time, retry count, F(i,t) threshold, and thermal parameters.
 
 ### 16 Fault Types
 
@@ -70,14 +72,29 @@ Generate month-long datasets with realistic driving patterns:
 - **Progressive aging** — connector_aging and gradual_degradation intensify with accumulated driving hours
 - **Cold-crank gating** — only fires when ambient < 5°C
 
+## Quick Start
+
+```bash
+pip install efuse-telemetry-generator
+efuse-gen
+```
+
+That's it — telemetry, features, and fault labels are in `output/`. To visualize interactively:
+
+```bash
+pip install "efuse-telemetry-generator[dashboard]"
+efuse-dashboard
+```
+
+> **New here?** See the [**documentation index**](docs/index.md) for a guided reading path, or jump to the [**Quickstart Guide**](docs/quickstart.md).
+
 ## Install from PyPI
 
 ```bash
 pip install efuse-telemetry-generator                # core generator + CLI
+pip install "efuse-telemetry-generator[excel]"        # adds Excel (.xlsx) import support
 pip install "efuse-telemetry-generator[dashboard]"    # includes Streamlit dashboard
 ```
-
-Then run `efuse-gen --config quick_demo` to generate your first dataset. See the [**Quickstart Guide**](docs/quickstart.md) for a full walkthrough.
 
 ## Developer Setup
 
@@ -128,10 +145,50 @@ Multi-cycle mode is auto-detected when the config has `drive_cycle.enabled: true
 ```
 --config, -c PATH     YAML scenario config
 --output, -o DIR      Root output directory (default: output/)
---format, -f FORMAT   parquet | csv (default: parquet)
+--format, -f FORMAT   parquet | csv | json (default: parquet)
 --duration, -d FLOAT  Override duration in seconds (single-cycle only)
 --seed, -s INT        Override random seed
+--dry-run             Preview what would be generated without writing files
 --json-log            Structured JSON logging
+--list-configs        List available built-in configs and exit
+
+Fleet-only options (requires a config with a fleet: section):
+--vehicles, -n INT    Override fleet vehicle count
+--days INT            Override fleet duration in days
+--workers, -w INT     Override fleet parallel workers
+--combined            Write combined fleet_telemetry.parquet
+```
+
+### Preview a Config
+
+```bash
+efuse-gen info quick_demo
+efuse-gen info ./my_scenario.yaml
+```
+
+### Import Topology from CSV / Excel
+
+Engineers can import their channel list from a spreadsheet instead of writing YAML:
+
+```bash
+# Generate a CSV template (open in Excel / Google Sheets)
+efuse-gen topology template -o my_channels.csv
+
+# Or a minimal template with just the essential columns
+efuse-gen topology template -o my_channels.csv --minimal
+
+# Fill in your channels, then import to YAML
+efuse-gen topology import my_channels.csv -o my_vehicle.yaml
+
+# Export an existing topology YAML back to CSV for editing
+efuse-gen topology export my_vehicle.yaml -o channels.csv
+
+# Scaffold a topology from a bundled preset
+efuse-gen topology new -t compact -o my_prototype.yaml   # 2 zones, 12 ch
+efuse-gen topology new -t full -o my_production.yaml     # 4 zones, 65 ch
+
+# Use it in a scenario
+efuse-gen --config ./my-scenario.yaml   # with topology_file: ./my_vehicle.yaml
 ```
 
 Output is written to `output/<config>_<YYYYMMDD-HHMMSS>/` — each run is isolated and named after the config used.
@@ -152,12 +209,6 @@ efuse-dashboard
 # Opens at http://localhost:8501 and reads ./output by default
 ```
 
-Alternative repo-local launch:
-
-```bash
-streamlit run dashboard/app.py
-```
-
 The dashboard reads `output/` from the current working directory by default. Set `EFUSE_TELEMETRY_OUTPUT_DIR=/path/to/output` to point it elsewhere.
 
 | Tab | Contents |
@@ -176,15 +227,15 @@ Ingest real bench, HIL, or production recordings into the same run format the ge
 
 ```bash
 # Single file with column mapping
-efuse-ingest recording.csv \
+efuse-gen ingest recording.csv \
   --map "I_ch01=current_a,U_bat=voltage_v,T_junc=temperature_c" \
   --channel ch_001
 
 # Directory of per-channel CSVs (channel_id derived from filenames)
-efuse-ingest bench_data/ --glob "*.csv"
+efuse-gen ingest bench_data/ --glob "*.csv"
 
 # Tag the data source
-efuse-ingest hil_capture.parquet --source-tag hil
+efuse-gen ingest hil_capture.parquet --source-tag hil
 ```
 
 Supported formats: CSV/TSV, Parquet, MDF/MF4 (requires `asammdf`), BLF/ASC CAN logs (requires `python-can` + `cantools`).
@@ -196,6 +247,8 @@ Ingested runs appear in the dashboard alongside synthetic runs, with a data-sour
 | Config | Description |
 |--------|-------------|
 | [`quick_demo`](efuse_datagen/config/templates/quick_demo.yaml) | 3-channel mixed-fault demo (60 s) |
+| [`custom_topology`](efuse_datagen/config/templates/custom_topology.yaml) | 2-zone, 6-channel user-defined ZC — fully explicit, no catalog (120 s) |
+| [`custom_topology_with_catalog`](efuse_datagen/config/templates/custom_topology_with_catalog.yaml) | 3-zone, 8-channel user-defined ZC with IC catalog presets (180 s) |
 | [`single_drive`](efuse_datagen/config/templates/single_drive.yaml) | 65-channel 4-zone topology, 300 s, 21 fault injections |
 | [`multi_day`](efuse_datagen/config/templates/multi_day.yaml) | 30-day multi-cycle simulation (~8.6 M rows) |
 | [`fleet`](efuse_datagen/config/templates/fleet.yaml) | 100 vehicles × 90 days, parallel generation with regional weather |
@@ -208,9 +261,10 @@ efuse_datagen/
 ├── schemas/telemetry.py      # Pydantic data models (ChannelMeta, EFuseProfile, FaultInjection, …)
 ├── config/
 │   ├── models.py             # SimulationConfig, DriveCycleConfig, FaultRateConfig, FeatureConfig
-│   ├── catalog.py            # eFuse IC catalog (19 families) + 65-channel BEV topology factory
+│   ├── catalog.py            # Optional eFuse IC preset library (19 families)
 │   ├── builtin.py            # Built-in config loader and registry
-│   └── templates/*.yaml      # Canonical packaged scenario configs
+│   ├── templates/*.yaml      # Scenario configs (reference topology_file for zones/channels)
+│   └── topologies/*.yaml     # Reusable vehicle topology files (zones + channel_specs)
 ├── dashboard_app.py          # Slim Streamlit orchestrator (delegates to tab modules)
 ├── dashboard_launcher.py     # efuse-dashboard entry point
 ├── dashboard/
@@ -224,12 +278,12 @@ efuse_datagen/
 ├── ingestion/                # MeasurementAdapter — load real bench/HIL/production data
 ├── analysis/
 │   └── hardware_harness.py   # IC benchmarking, wiring sizing, thermal headroom (data-agnostic)
-├── cli.py                    # Typer CLI: efuse-gen + efuse-ingest entry points
+├── cli.py                    # Typer CLI: efuse-gen (with ingest subcommand)
 └── utils/logging.py          # Logging configuration
 dashboard/
 └── app.py                    # Repo compatibility wrapper for the packaged dashboard
 docs/                         # Architecture, data model, configuration, and onboarding docs
-tests/                        # 92 pytest tests
+tests/                        # 158 pytest tests
 examples/
 └── quickstart.py             # Minimal end-to-end example
 ```
@@ -237,7 +291,7 @@ examples/
 ## Tests
 
 ```bash
-pytest                  # Run all 92 tests
+pytest                  # Run all tests
 pytest -v               # Verbose
 pytest --cov=efuse_datagen  # With coverage
 ```

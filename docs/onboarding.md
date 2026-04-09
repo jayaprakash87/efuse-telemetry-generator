@@ -77,7 +77,7 @@ efuse-gen --config fleet --vehicles 3 --days 3
 ### 7. Ingest Real Measurement Data
 
 ```bash
-efuse-ingest bench_recording.csv \
+efuse-gen ingest bench_recording.csv \
   --map "I_ch01=current_a,U_bat=voltage_v,T_junc=temperature_c" \
   --channel ch_001
 ```
@@ -90,7 +90,7 @@ This creates a standard run directory from your bench CSV. The dashboard shows i
 pytest -v
 ```
 
-92 tests covering generation, ADC quantization, protection logic, thermal model, CAN signal packing, current limiting, and ground faults.
+158 tests covering generation, ADC quantization, protection logic, thermal model, CAN signal packing, current limiting, ground faults, topology import/export, and feature extraction.
 
 ---
 
@@ -114,12 +114,12 @@ See [domain-reference.md](domain-reference.md) for detailed hardware theory.
 ### Channel Topology
 
 The default 65-channel topology mirrors a real BEV:
-- **zone_front** (18 ch): lighting, HVAC, wipers, charger, horn, suspension
-- **zone_rear** (17 ch): tail lights, seat heaters, defroster, dampers, radar
-- **zone_body** (15 ch): door locks, windows, mirrors, sunroof, trunk, keyless
-- **zone_central** (15 ch): main PDU, battery disconnect, DC/DC, inverter, ADAS
+- **zone_rear** (25 ch): seating, lighting, infotainment, ADAS, drivetrain
+- **zone_body** (15 ch): doors, locks, cabin climate, body electronics
+- **zone_front** (15 ch): power supply, HVAC, suspension, auxiliary loads
+- **zone_central** (10 ch): power distribution, closures, reserves
 
-Each channel references an eFuse IC family from the **catalog** (`catalog.py`), which provides the electrical parameters (Rds_on, ISENSE ratio, ADC resolution, protection thresholds).
+The topology is fully customisable — import your own from CSV/Excel (`efuse-gen topology import`) or write YAML directly. Each channel can reference an eFuse IC family from the **catalog** (`catalog.py`) for electrical defaults, or specify all parameters explicitly.
 
 ### Signal Pipeline
 
@@ -152,14 +152,15 @@ See [drive-cycles.md](drive-cycles.md) for the full deep-dive.
 | File | What to Look At |
 |------|-----------------|
 | [`efuse_datagen/schemas/telemetry.py`](../efuse_datagen/schemas/telemetry.py) | All data types. Start here to understand the vocabulary. |
-| [`efuse_datagen/config/catalog.py`](../efuse_datagen/config/catalog.py) | eFuse IC parameters + vehicle topology. Read `EFUSE_CATALOG` and `example_topology()`. |
+| [`efuse_datagen/config/catalog.py`](../efuse_datagen/config/catalog.py) | eFuse IC preset library. Read `EFUSE_CATALOG` — 19 IC families with real electrical parameters. |
+| [`efuse_datagen/config/topology_io.py`](../efuse_datagen/config/topology_io.py) | CSV / Excel topology import / export. Use when bringing in EE design data from spreadsheets. |
 | [`efuse_datagen/config/models.py`](../efuse_datagen/config/models.py) | Config hierarchy. Read `GeneratorConfig` to see what the YAML maps to. |
 | [`efuse_datagen/simulation/generator.py`](../efuse_datagen/simulation/generator.py) | Core engine. Read `_generate_channel()` — it's the 8-stage pipeline. |
 | [`efuse_datagen/simulation/drive_cycles.py`](../efuse_datagen/simulation/drive_cycles.py) | Multi-cycle planner. Read `generate_schedule()` and `distribute_faults()`. |
 | [`efuse_datagen/features/engine.py`](../efuse_datagen/features/engine.py) | Feature computation. Read `compute()` — one method, 20+ features. |
 | [`efuse_datagen/storage/writer.py`](../efuse_datagen/storage/writer.py) | Output layer. Straightforward Parquet/CSV writes. |
 | [`efuse_datagen/cli.py`](../efuse_datagen/cli.py) | CLI orchestration. Single-cycle vs multi-cycle branching logic. |
-| [`efuse_datagen/dashboard_app.py`](../efuse_datagen/dashboard_app.py) | Packaged Streamlit UI. [`dashboard/app.py`](../dashboard/app.py) is only a compatibility wrapper. |
+| [`efuse_datagen/dashboard_app.py`](../efuse_datagen/dashboard_app.py) | Packaged Streamlit UI. Launch with `efuse-dashboard`. |
 | [`efuse_datagen/config/templates/multi_day.yaml`](../efuse_datagen/config/templates/multi_day.yaml) | Best example of full multi-cycle config. Read the comments. |
 | [`tests/test_simulation.py`](../tests/test_simulation.py) | Test patterns — good examples of how to call the generator programmatically. |
 
@@ -192,9 +193,10 @@ See [drive-cycles.md](drive-cycles.md) for the full deep-dive.
 
 ### Create a Custom Vehicle Topology
 
-1. Write a function in `catalog.py` returning a list of channel spec dicts (follow `example_topology()`)
-2. (Or) Define channels inline in your YAML config under `simulation.channels`
-3. Reference eFuse families from `EFUSE_CATALOG` via the `efuse_family` field
+1. Create a topology YAML file with `zones` and `channel_specs` (see `efuse_datagen/config/topologies/bev_4zone_65ch.yaml` for a 65-channel example)
+2. Reference it from your scenario config via `topology_file: ./my_vehicle.yaml`
+3. (Or) Define zones + channels inline in the scenario YAML for small topologies
+4. Optionally reference eFuse families from the bundled `EFUSE_CATALOG` via the `efuse_family` field
 
 ### Debug a Specific Channel's Output
 

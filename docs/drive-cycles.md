@@ -128,9 +128,9 @@ Multi-cycle mode is activated by setting `drive_cycle.enabled: true` in the YAML
 
 ```yaml
 simulation:
-  use_example_topology: true
   sample_interval_ms: 1000.0
   seed: 42
+  topology_file: bev_4zone_65ch  # or ./my_vehicle.yaml
 
   drive_cycle:
     enabled: true
