@@ -6,7 +6,7 @@ Supports single-cycle quick runs and **month-long multi-cycle drive simulations*
 
 The package is distributed as a **full runtime package**: library, CLI, built-in sample configs, and dashboard launcher.
 
-> **Documentation:** See [`docs/`](docs/) for architecture deep-dive, data model reference, configuration guide, onboarding materials, [**eFuse domain reference**](docs/domain-reference.md) (for hardware engineers), [**signal-chain one-pager**](docs/signal-chain-one-pager.md) (for stakeholders), and [**use-case library**](docs/use-cases/README.md).
+> **Documentation:** See [`docs/`](docs/) for the [**quickstart guide**](docs/quickstart.md) (install from PyPI), architecture deep-dive, data model reference, configuration guide, onboarding materials, [**eFuse domain reference**](docs/domain-reference.md) (for hardware engineers), [**signal-chain one-pager**](docs/signal-chain-one-pager.md) (for stakeholders), and [**use-case library**](docs/use-cases/README.md).
 
 ## What It Generates
 
@@ -70,7 +70,16 @@ Generate month-long datasets with realistic driving patterns:
 - **Progressive aging** — connector_aging and gradual_degradation intensify with accumulated driving hours
 - **Cold-crank gating** — only fires when ambient < 5°C
 
-## Setup
+## Install from PyPI
+
+```bash
+pip install efuse-telemetry-generator                # core generator + CLI
+pip install "efuse-telemetry-generator[dashboard]"    # includes Streamlit dashboard
+```
+
+Then run `efuse-gen --config quick_demo` to generate your first dataset. See the [**Quickstart Guide**](docs/quickstart.md) for a full walkthrough.
+
+## Developer Setup
 
 ```bash
 python3 -m venv .venv
