@@ -61,6 +61,9 @@ dev = [
     "mypy",
     "types-PyYAML",
 ]
+excel = [
+    "openpyxl>=3.0,<4",
+]
 dashboard = [
     "streamlit>=1.32,<2",
     "plotly>=5.0,<6",
@@ -68,7 +71,6 @@ dashboard = [
 
 [project.scripts]
 efuse-gen = "efuse_datagen.cli:main"
-efuse-ingest = "efuse_datagen.cli:ingest_main"
 efuse-dashboard = "efuse_datagen.dashboard_launcher:main"
 
 [tool.setuptools.packages.find]
@@ -76,7 +78,7 @@ where = ["."]
 include = ["efuse_datagen*"]
 
 [tool.setuptools.package-data]
-efuse_datagen = ["config/templates/*.yaml", "py.typed"]
+efuse_datagen = ["config/templates/*.yaml", "config/topologies/*.yaml", "py.typed"]
 
 [tool.ruff]
 line-length = 100

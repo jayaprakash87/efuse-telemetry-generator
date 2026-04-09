@@ -5,6 +5,7 @@ include CONTRIBUTING.md
 include pyproject.toml
 
 recursive-include efuse_datagen/config/templates *.yaml
+recursive-include efuse_datagen/config/topologies *.yaml
 include efuse_datagen/py.typed
 
 recursive-include docs *.md
