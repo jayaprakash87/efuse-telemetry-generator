@@ -115,16 +115,12 @@ class TestConfigResolution:
 
 class TestIngestCLI:
     def test_ingest_missing_source(self):
-        from efuse_datagen.cli import ingest_app
-
-        result = runner.invoke(ingest_app, ["/tmp/nonexistent_file_xyz.csv"])
+        result = runner.invoke(app, ["ingest", "/tmp/nonexistent_file_xyz.csv"])
         assert result.exit_code != 0
 
     def test_ingest_csv(self, tmp_path):
         """Smoke test: ingest a minimal CSV file into run format."""
         import pandas as pd
-
-        from efuse_datagen.cli import ingest_app
 
         csv_path = tmp_path / "test_input.csv"
         df = pd.DataFrame({
@@ -135,7 +131,8 @@ class TestIngestCLI:
         })
         df.to_csv(csv_path, index=False)
 
-        result = runner.invoke(ingest_app, [
+        result = runner.invoke(app, [
+            "ingest",
             str(csv_path),
             "--output", str(tmp_path / "output"),
             "--time-col", "timestamp",

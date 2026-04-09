@@ -1,20 +1,42 @@
 """CLI for eFuse Telemetry Generator.
 
-Example usage:
+Entry point: efuse-gen
+
+Generate commands:
     efuse-gen                                     # quick_demo (3 ch, 60 s)
     efuse-gen --config single_drive               # 65 ch, one ignition cycle
     efuse-gen --config multi_day                   # 65 ch, 30 days
     efuse-gen --config fleet                       # 100 vehicles × 90 days
     efuse-gen --config fleet --vehicles 5 --days 7 # small fleet test
     efuse-gen --list-configs                       # show all built-in configs
+    efuse-gen --dry-run --config single_drive      # preview without generating
+    efuse-gen --format csv --config quick_demo     # CSV output
 
-The generator produces:
+Info / preview:
+    efuse-gen info quick_demo                      # scenario summary, no output
+    efuse-gen info ./my_scenario.yaml
+
+Topology management:
+    efuse-gen topology template -o channels.csv    # generate CSV template
+    efuse-gen topology template --minimal -o c.csv # minimal columns only
+    efuse-gen topology import channels.csv -o topo.yaml
+    efuse-gen topology export topo.yaml -o channels.csv
+    efuse-gen topology new -t compact -o vehicle.yaml
+    efuse-gen topology new -t full -o vehicle.yaml
+
+Ingestion:
+    efuse-gen ingest recording.csv --map "I_ch01=current_a,U_bat=voltage_v"
+    efuse-gen ingest bench_data/ --glob "*.csv"
+    efuse-gen ingest hil.parquet --source-tag hil
+
+Output files (single-vehicle and multi-cycle modes):
     <output>/<config>_<timestamp>/telemetry.parquet         raw per-sample eFuse signals
     <output>/<config>_<timestamp>/features.parquet          rolling derived features
     <output>/<config>_<timestamp>/labels.parquet            ground-truth fault windows
     <output>/<config>_<timestamp>/channel_manifest.parquet  per-channel metadata
     <output>/<config>_<timestamp>/drive_cycles.parquet      multi-cycle schedule (optional)
-    <output>/<config>_<timestamp>/config.yaml               snapshot of the config used
+    <output>/<config>_<timestamp>/config.yaml               full config snapshot (simulation, features, storage, fleet)
+    <output>/<config>_<timestamp>/README.md                 run summary with quick-load snippets
 """
 
 from __future__ import annotations
@@ -386,7 +408,16 @@ def generate(
         help="Preview what the config would generate without writing any files.",
     ),
 ) -> None:
-    """Generate synthetic eFuse telemetry, features, and fault labels."""
+    """Generate synthetic eFuse telemetry, features, and fault labels.
+
+    Runs the scenario specified by --config (default: quick_demo). Writes
+    telemetry, features, labels, channel manifest, config snapshot, and a
+    run README to output/<config>_<timestamp>/.
+
+    Use --dry-run to preview channel count, estimated row count, and output
+    path without writing any files. Use 'efuse-gen info <config>' to inspect
+    scenario contents (zones, faults, fleet settings) without generating.
+    """
     if ctx.invoked_subcommand is not None:
         return
 
@@ -739,15 +770,8 @@ def _run_fleet(
 # ingest subcommand
 # ---------------------------------------------------------------------------
 
-ingest_app = typer.Typer(
-    name="ingest",
-    help="Ingest real measurement data (CSV / Parquet / MDF / BLF) into the standard eFuse run format.",
-    add_completion=False,
-)
-app.add_typer(ingest_app, name="ingest")
 
-
-@ingest_app.command()
+@app.command("ingest")
 def ingest(
     source: Path = typer.Argument(..., help="Path to a measurement file or directory of files."),
     output: Path = typer.Option(
@@ -781,7 +805,18 @@ def ingest(
         help="Data source tag: bench, hil, or production.",
     ),
 ) -> None:
-    """Ingest measurement data into the standard run format."""
+    """Ingest real measurement data into the standard run format.
+
+    Loads a CSV, Parquet, MDF/MF4, or BLF/ASC file (or a directory of files)
+    and writes a standard run directory that the dashboard and feature engine
+    can consume identically to synthetic runs.
+
+    Examples:
+
+        efuse-gen ingest recording.csv --map "I_ch01=current_a,U_bat=voltage_v" --channel ch_001
+        efuse-gen ingest bench_data/ --glob "*.csv"
+        efuse-gen ingest hil_capture.parquet --source-tag hil
+    """
     from datetime import datetime
 
     from efuse_datagen.ingestion import MeasurementAdapter, save_as_run
