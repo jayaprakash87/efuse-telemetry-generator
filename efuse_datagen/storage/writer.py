@@ -150,3 +150,52 @@ class StorageWriter:
             df_out.to_json(p, orient="records", date_format="iso", indent=2)
         log.info("Wrote %d rows to %s", len(df_out), p)
         return p
+
+    def write_run_readme(
+        self,
+        *,
+        scenario_name: str = "",
+        n_channels: int = 0,
+        n_rows: int = 0,
+        n_features: int = 0,
+        n_labels: int = 0,
+        duration_s: float = 0,
+        fmt: str = "parquet",
+    ) -> Path:
+        """Write a short README.md into the run directory for discoverability."""
+        ext = fmt if fmt != "parquet" else "parquet"
+        lines = [
+            f"# {scenario_name or 'eFuse Run'}",
+            "",
+            f"Generated: {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            "",
+            "## Files",
+            "",
+            f"| File | Rows | Description |",
+            f"|------|------|-------------|",
+            f"| `telemetry.{ext}` | {n_rows:,} | Raw eFuse signals (current, voltage, temperature, protection events) |",
+            f"| `features.{ext}` | {n_features:,} | Rolling statistics (RMS current, spike score, temp slope, …) |",
+            f"| `labels.{ext}` | {n_labels:,} | Ground-truth fault windows with type and severity |",
+            f"| `channel_manifest.{ext}` | {n_channels} | Per-channel metadata (zone, load, eFuse family, electrical params) |",
+            f"| `config.yaml` | — | Full scenario config for exact reproducibility |",
+            "",
+            "## Quick Load",
+            "",
+            "```python",
+            "import pandas as pd",
+            "",
+            f'telem = pd.read_{fmt}("telemetry.{ext}")',
+            f'feats = pd.read_{fmt}("features.{ext}")',
+            f'labels = pd.read_{fmt}("labels.{ext}")',
+            "```",
+            "",
+            "## Visualize",
+            "",
+            "```bash",
+            "efuse-dashboard   # interactive Streamlit dashboard",
+            "```",
+            "",
+        ]
+        p = self._out / "README.md"
+        p.write_text("\n".join(lines))
+        return p
