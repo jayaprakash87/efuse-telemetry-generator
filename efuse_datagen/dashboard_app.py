@@ -3,7 +3,7 @@
 Slim orchestrator — each tab lives in ``efuse_datagen.dashboard.tabs.*``.
 Supports both single-vehicle and fleet runs.
 
-Launch via the ``efuse-dashboard`` entry point or ``dashboard/app.py``.
+Launch via the ``efuse-dashboard`` entry point.
 """
 
 from __future__ import annotations
