@@ -1,0 +1,204 @@
+# BEV 2-Zone / 12-Channel Compact Topology
+#
+# A minimal but realistic zonal architecture for quick experiments and
+# unit-test fixtures.  Two zone controllers with 12 eFuse channels covering
+# the most common load families (resistive, inductive, motor, PTC, LED, capacitive).
+#
+#   zone_front  ch_01-ch_06  (6 ch)  headlamps, wipers, horn, fan, seat heater, aux
+#   zone_rear   ch_07-ch_12  (6 ch)  tail lamps, window, lock, defogger, pump, reserve
+#
+# Usage:
+#   simulation:
+#     topology_file: bev_2zone_12ch
+
+zones:
+- zone_id: zone_front
+  name: Front Zone Controller
+  location: front
+  bus_interface: can
+- zone_id: zone_rear
+  name: Rear Zone Controller
+  location: rear
+  bus_interface: can
+
+channel_specs:
+# --- zone_front (6 channels) ---
+- channel_id: ch_01
+  zone_id: zone_front
+  efuse_family: inf_hs_14a
+  load_name: headlamp_low_beam
+  load_type: led
+  connected_loads: [headlamp_low_beam_left, headlamp_low_beam_right]
+  system_cluster: exterior_lighting
+  system_name: front_lighting
+  driver_type: high_side
+  power_class: ignition
+  pwm_capable: true
+  wire_gauge_mm2: 0.75
+  run_length_m: 1.5
+
+- channel_id: ch_02
+  zone_id: zone_front
+  efuse_family: inf_hs_11a
+  load_name: wiper_motor
+  load_type: motor
+  connected_loads: [wiper_motor_front]
+  system_cluster: body_comfort
+  system_name: wipers
+  driver_type: high_side
+  power_class: ignition
+  pwm_capable: false
+  wire_gauge_mm2: 1.0
+  run_length_m: 1.0
+
+- channel_id: ch_03
+  zone_id: zone_front
+  efuse_family: inf_hs_9a
+  load_name: horn
+  load_type: inductive
+  connected_loads: [horn]
+  system_cluster: body_comfort
+  system_name: horn
+  driver_type: high_side
+  power_class: ignition
+  pwm_capable: false
+  duty_cycle: 0.05
+  on_duration_s: 0.5
+  off_duration_s: 10.0
+  wire_gauge_mm2: 0.75
+  run_length_m: 2.0
+
+- channel_id: ch_04
+  zone_id: zone_front
+  efuse_family: inf_hs_14a
+  load_name: radiator_fan
+  load_type: motor
+  connected_loads: [radiator_fan]
+  system_cluster: powertrain
+  system_name: engine_cooling
+  driver_type: high_side
+  power_class: ignition
+  pwm_capable: true
+  wire_gauge_mm2: 1.5
+  run_length_m: 0.8
+
+- channel_id: ch_05
+  zone_id: zone_front
+  efuse_family: inf_hs_9a
+  load_name: seat_heater_front
+  load_type: ptc
+  connected_loads: [seat_heater_front_left]
+  system_cluster: body_comfort
+  system_name: seat_heating
+  driver_type: high_side
+  power_class: ignition
+  pwm_capable: true
+  on_duration_s: 40.0
+  off_duration_s: 30.0
+  wire_gauge_mm2: 0.75
+  run_length_m: 1.2
+
+- channel_id: ch_06
+  zone_id: zone_front
+  efuse_family: inf_hs_5a
+  load_name: aux_12v_outlet
+  load_type: resistive
+  connected_loads: [aux_outlet_front]
+  system_cluster: power_distribution
+  system_name: auxiliary
+  driver_type: high_side
+  power_class: accessory
+  pwm_capable: false
+  wire_gauge_mm2: 0.5
+  run_length_m: 1.0
+
+# --- zone_rear (6 channels) ---
+- channel_id: ch_07
+  zone_id: zone_rear
+  efuse_family: inf_hs_9a
+  load_name: tail_lamp
+  load_type: led
+  connected_loads: [tail_lamp_left, tail_lamp_right]
+  system_cluster: exterior_lighting
+  system_name: rear_lighting
+  driver_type: high_side
+  power_class: ignition
+  pwm_capable: true
+  wire_gauge_mm2: 0.5
+  run_length_m: 1.8
+
+- channel_id: ch_08
+  zone_id: zone_rear
+  efuse_family: inf_hs_14a
+  load_name: window_motor_rear
+  load_type: motor
+  connected_loads: [window_motor_rear_left]
+  system_cluster: body_comfort
+  system_name: windows
+  driver_type: high_side
+  power_class: ignition
+  pwm_capable: false
+  wire_gauge_mm2: 1.0
+  run_length_m: 0.6
+
+- channel_id: ch_09
+  zone_id: zone_rear
+  efuse_family: inf_hs_5a
+  load_name: door_lock_rear
+  load_type: solenoid
+  connected_loads: [door_lock_rear_left]
+  system_cluster: body_comfort
+  system_name: door_locks
+  driver_type: high_side
+  power_class: always_on
+  pwm_capable: false
+  duty_cycle: 0.02
+  on_duration_s: 0.4
+  off_duration_s: 20.0
+  wire_gauge_mm2: 0.5
+  run_length_m: 0.5
+
+- channel_id: ch_10
+  zone_id: zone_rear
+  efuse_family: inf_hs_11a
+  load_name: rear_defogger
+  load_type: resistive
+  connected_loads: [rear_defogger]
+  system_cluster: body_comfort
+  system_name: hvac
+  driver_type: high_side
+  power_class: ignition
+  pwm_capable: false
+  wire_gauge_mm2: 1.5
+  run_length_m: 2.0
+
+- channel_id: ch_11
+  zone_id: zone_rear
+  efuse_family: inf_hs_9a
+  load_name: washer_pump
+  load_type: motor
+  connected_loads: [washer_pump_rear]
+  system_cluster: body_comfort
+  system_name: wipers
+  driver_type: high_side
+  power_class: ignition
+  pwm_capable: false
+  duty_cycle: 0.1
+  on_duration_s: 2.0
+  off_duration_s: 18.0
+  wire_gauge_mm2: 0.75
+  run_length_m: 2.5
+
+- channel_id: ch_12
+  zone_id: zone_rear
+  efuse_family: inf_hs_5a
+  load_name: reserve_rear
+  load_type: resistive
+  connected_loads: [reserve]
+  system_cluster: power_distribution
+  system_name: auxiliary
+  driver_type: high_side
+  power_class: ignition
+  pwm_capable: false
+  wire_gauge_mm2: 0.5
+  run_length_m: 1.0
